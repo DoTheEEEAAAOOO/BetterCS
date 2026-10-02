@@ -7,7 +7,7 @@ export const Main = () => div(
   header(h1("BetterCS")),
   main(
     section(
-      h2("Workspace"),
+      h2("Navigation"),
       Tabs({
         id: "main-tabs",
         label: "Navigation",
