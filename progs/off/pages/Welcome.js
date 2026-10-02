@@ -10,6 +10,15 @@ audio.play().catch(() => {});
 const {a, button, div, form, h1, header, input, label, main, p} = van.tags
 const loginStatus = van.state("")
 const loginBusy = van.state(false)
+const repoStatus = van.state("")
+const repoBusy = van.state(false)
+const linkedRepo = van.state("")
+
+const openStepTwo = () => {
+    requestAnimationFrame(() => {
+        document.getElementById("welcome-tabs-tab-2")?.click()
+    })
+}
 
 const submitLogin = async event => {
     event.preventDefault()
@@ -26,9 +35,50 @@ const submitLogin = async event => {
     try {
         const result = await LogIn(username, token)
         loginStatus.val = result.message
-        if (result.ok) loginForm.elements.namedItem("token").value = ""
+
+        if (result.ok) {
+            linkedRepo.val = ""
+            repoStatus.val = ""
+            loginForm.elements.namedItem("token").value = ""
+            openStepTwo()
+        }
     } finally {
         loginBusy.val = false
+    }
+}
+
+const submitRepoLink = async event => {
+    event.preventDefault()
+    if (repoBusy.val) return
+
+    const repoForm = event.currentTarget
+    const formData = new FormData(repoForm)
+    const repoValue = formData.get("repo")?.toString().trim() ?? ""
+    const normalizedRepo = repoValue
+        .replace(/^https?:\/\/github\.com\//i, "")
+        .replace(/\.git$/i, "")
+        .replace(/^\//, "")
+        .replace(/\/+$/, "")
+
+    if (!normalizedRepo) {
+        repoStatus.val = "Enter a GitHub repository to continue."
+        return
+    }
+
+    if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(normalizedRepo)) {
+        repoStatus.val = "Use the format owner/repository or a GitHub repo URL."
+        return
+    }
+
+    repoBusy.val = true
+    repoStatus.val = ""
+
+    try {
+        linkedRepo.val = normalizedRepo
+        repoStatus.val = `Linked ${normalizedRepo} as your BetterCS cloud storage.`
+        repoForm.elements.namedItem("repo").value = normalizedRepo
+    } finally {
+        repoBusy.val = false
     }
 }
 
@@ -85,8 +135,32 @@ const Main = () => div(
                             p({role: "status", "aria-live": "polite"}, () => loginStatus.val),
                         ),
                     ),
-                }
-            ]
+                },
+                {
+                    label: "OOBE: Step 2",
+                    content: div(
+                        h1("OOBE: Step 2"),
+                        p("This is the second step in setting up BetterCS. Link a GitHub repository to use as the cloud storage for BetterCS."),
+                        p("Your GitHub repository will be used as the cloud storage for BetterCS, which can store your settings, data, and synced project files."),
+                        form({class: "github-repo-link", onsubmit: submitRepoLink},
+                            label({for: "github-repo"}, "GitHub repository"),
+                            input({
+                                type: "text",
+                                id: "github-repo",
+                                name: "repo",
+                                placeholder: "owner/repository",
+                                autocomplete: "off",
+                                required: true,
+                            }),
+                            button({type: "submit", disabled: () => repoBusy.val},
+                                () => repoBusy.val ? "Linking..." : "Link repository",
+                            ),
+                            p({role: "status", "aria-live": "polite"}, () => repoStatus.val || (linkedRepo.val ? `Currently linked: ${linkedRepo.val}` : "")),
+                        ),
+                    ),
+                },
+            ],
+            initialTab: 1,
         })
     ),
 )
