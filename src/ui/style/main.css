@@ -186,6 +186,47 @@ button:active {
         inset 0 0 14px rgba(0, 209, 255, 0.1);
 }
 
+.tabs {
+    width: 100%;
+}
+
+.tabs-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    border-bottom: 1px solid rgba(167, 191, 199, 0.2);
+}
+
+.tabs-trigger {
+    min-width: 0;
+    min-height: 46px;
+    margin: 0;
+    padding: 8px 18px;
+    border: 1px solid transparent;
+    border-bottom-width: 2px;
+    border-radius: 3px 3px 0 0;
+    color: #b9c8ce;
+    background: transparent;
+    font-size: 17px;
+}
+
+.tabs-trigger[aria-selected="true"] {
+    color: #ffffff;
+    border-color: rgba(73, 218, 255, 0.45);
+    border-bottom-color: #49daff;
+    background: rgba(0, 197, 255, 0.08);
+}
+
+.tabs-trigger:focus-visible {
+    outline: 2px solid #49daff;
+    outline-offset: 2px;
+}
+
+.tabs-panel {
+    min-height: 180px;
+    padding: 28px 0;
+}
+
 input,
 select,
 textarea {
@@ -590,6 +631,12 @@ section:nth-of-type(4) {
         min-height: 40px;
         margin: 0 8px 8px 0;
         padding: 5px 11px;
+        font-size: 15px;
+    }
+
+    .tabs-trigger {
+        min-height: 42px;
+        padding: 6px 12px;
         font-size: 15px;
     }
 

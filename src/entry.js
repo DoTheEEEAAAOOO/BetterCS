@@ -11,7 +11,7 @@ const contentTypes = {
 
 const server = http.createServer((req, res) => {
     const requestPath = new URL(req.url, "http://localhost").pathname;
-    const file = requestPath.startsWith("/assets/")
+    const file = requestPath.startsWith("/assets/") || requestPath.startsWith("/node_modules/")
         ? path.join(__dirname, requestPath)
         : path.join(__dirname, "ui", requestPath === "/" ? "index.html" : requestPath);
 
