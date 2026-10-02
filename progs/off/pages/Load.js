@@ -1,4 +1,4 @@
-import van from "https://cdn.jsdelivr.net/npm/vanjs-core@1.6.1/src/van.js"
+import van from "../lib/van.js"
 
 const {div, h6} = van.tags
 const loading = van.state(true)
@@ -26,7 +26,7 @@ const loadWelcome = async () => {
     } catch (error) {
         console.error("Unable to load the Welcome page:", error)
         loading.val = false
-        message.val = "Unable to load BetterCS. Check your connection and reload."
+        message.val = "Unable to open BetterCS. Reload the page to try again."
     }
 }
 

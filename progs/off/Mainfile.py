@@ -10,8 +10,8 @@ workspace_dir = base_dir.parents[1]
 pages_dir = base_dir / "pages"
 components_dir = base_dir / "components"
 style_dir = base_dir / "style"
+lib_dir = base_dir / "lib"
 assets_dir = workspace_dir / "src" / "assets"
-node_modules_dir = workspace_dir / "src" / "node_modules"
 
 pages = {}
 for page in pages_dir.glob("*.html"):
@@ -35,13 +35,13 @@ def component_asset(filename):
 def style_asset(filename):
     return send_from_directory(style_dir, filename)
 
+@app.route("/lib/<path:filename>")
+def library_asset(filename):
+    return send_from_directory(lib_dir, filename)
+
 @app.route("/assets/<path:filename>")
 def asset(filename):
     return send_from_directory(assets_dir, filename)
-
-@app.route("/node_modules/<path:filename>")
-def node_module(filename):
-    return send_from_directory(node_modules_dir, filename)
 
 if __name__ == "__main__":
     app.run(debug=True)

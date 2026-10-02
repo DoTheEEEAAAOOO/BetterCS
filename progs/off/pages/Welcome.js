@@ -1,7 +1,8 @@
-import van from "https://cdn.jsdelivr.net/npm/vanjs-core@1.6.1/src/van.js"
+import van from "../lib/van.js"
 import {Notif} from "../components/Notif.js"
+import {Tabs} from "../components/Tabs.js"
 
-const {div, h1, header, main} = van.tags
+const {div, h1, header, main, p} = van.tags
 
 const Main = () => div(
     header(h1("Welcome to BetterCS")),

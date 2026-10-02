@@ -1,4 +1,4 @@
-import van from "https://cdn.jsdelivr.net/npm/vanjs-core@1.6.1/src/van.js"
+import van from "../lib/van.js"
 
 const {button, div, p, strong} = van.tags
 

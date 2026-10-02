@@ -1,4 +1,4 @@
-import van from "../../node_modules/vanjs-core/src/van.js"
+import van from "../lib/van.js"
 
 const {button, div} = van.tags
 let nextTabsId = 0
