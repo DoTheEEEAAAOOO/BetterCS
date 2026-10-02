@@ -8,10 +8,12 @@ print("Initting")
 base_dir = Path(__file__).resolve().parent
 workspace_dir = base_dir.parents[1]
 pages_dir = base_dir / "pages"
+backend_dir = base_dir / "backend"
 components_dir = base_dir / "components"
 style_dir = base_dir / "style"
 lib_dir = base_dir / "lib"
 assets_dir = workspace_dir / "src" / "assets"
+audio_dir = workspace_dir / "progs" / "assets"
 
 pages = {}
 for page in pages_dir.glob("*.html"):
@@ -26,6 +28,10 @@ def home():
 @app.route("/pages/<path:filename>")
 def page_asset(filename):
     return send_from_directory(pages_dir, filename)
+
+@app.route("/backend/<path:filename>")
+def backend_asset(filename):
+    return send_from_directory(backend_dir, filename)
 
 @app.route("/components/<path:filename>")
 def component_asset(filename):
@@ -42,6 +48,10 @@ def library_asset(filename):
 @app.route("/assets/<path:filename>")
 def asset(filename):
     return send_from_directory(assets_dir, filename)
+
+@app.route("/audio/<path:filename>")
+def audio_asset(filename):
+    return send_from_directory(audio_dir, filename)
 
 if __name__ == "__main__":
     app.run(debug=True)
