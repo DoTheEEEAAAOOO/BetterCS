@@ -2,10 +2,18 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
+const contentTypes = {
+    ".css": "text/css",
+    ".html": "text/html",
+    ".js": "text/javascript",
+    ".ttf": "font/ttf"
+};
+
 const server = http.createServer((req, res) => {
-    const file = req.url === "/"
-        ? path.join(__dirname, "ui", "index.html")
-        : path.join(__dirname, "ui", req.url);
+    const requestPath = new URL(req.url, "http://localhost").pathname;
+    const file = requestPath.startsWith("/assets/")
+        ? path.join(__dirname, requestPath)
+        : path.join(__dirname, "ui", requestPath === "/" ? "index.html" : requestPath);
 
     fs.readFile(file, (err, data) => {
         if (err) {
@@ -15,7 +23,7 @@ const server = http.createServer((req, res) => {
         }
 
         res.writeHead(200, {
-            "Content-Type": "text/html"
+            "Content-Type": contentTypes[path.extname(file)] || "application/octet-stream"
         });
         res.end(data);
     });
