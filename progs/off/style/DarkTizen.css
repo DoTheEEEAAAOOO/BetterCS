@@ -65,6 +65,60 @@ body::before {
     font-weight: 500;
 }
 
+.notif {
+    position: fixed;
+    z-index: 2;
+    right: clamp(16px, 4vw, 32px);
+    bottom: clamp(16px, 4vw, 32px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: start;
+    width: min(460px, calc(100vw - 32px));
+    padding: 20px;
+    border: 1px solid rgba(73, 218, 255, 0.34);
+    border-radius: 4px;
+    background: linear-gradient(145deg, rgba(25, 38, 44, 0.98), rgba(10, 16, 20, 0.98));
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38), 0 0 20px rgba(0, 194, 255, 0.1);
+    animation: tizen-enter 0.24s ease both;
+}
+
+.notif-copy strong {
+    display: block;
+    margin: 0 0 8px;
+    color: #f3f8fa;
+    font-size: 18px;
+}
+
+.notif-copy p {
+    margin: 0;
+    color: #b9c8ce;
+    font-size: 15px;
+}
+
+.notif-dismiss {
+    display: grid;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    margin: -6px -6px 0 0;
+    padding: 0;
+    place-items: center;
+    border: 1px solid transparent;
+    color: #b9c8ce;
+    background: transparent;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.notif-dismiss:hover,
+.notif-dismiss:focus-visible {
+    color: #ffffff;
+    border-color: rgba(73, 218, 255, 0.45);
+    background: rgba(0, 197, 255, 0.08);
+}
+
 header {
     width: 100%;
     min-height: 120px;
@@ -193,6 +247,7 @@ button:focus {
         0 0 24px rgba(0, 204, 255, 0.28),
         inset 0 0 20px rgba(0, 209, 255, 0.08);
     outline: none;
+    transform: scale(1.1);
 }
 
 button:active {

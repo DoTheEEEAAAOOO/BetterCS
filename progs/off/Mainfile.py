@@ -8,6 +8,7 @@ print("Initting")
 base_dir = Path(__file__).resolve().parent
 workspace_dir = base_dir.parents[1]
 pages_dir = base_dir / "pages"
+components_dir = base_dir / "components"
 style_dir = base_dir / "style"
 assets_dir = workspace_dir / "src" / "assets"
 node_modules_dir = workspace_dir / "src" / "node_modules"
@@ -25,6 +26,10 @@ def home():
 @app.route("/pages/<path:filename>")
 def page_asset(filename):
     return send_from_directory(pages_dir, filename)
+
+@app.route("/components/<path:filename>")
+def component_asset(filename):
+    return send_from_directory(components_dir, filename)
 
 @app.route("/style/<path:filename>")
 def style_asset(filename):

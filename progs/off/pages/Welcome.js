@@ -1,10 +1,16 @@
 import van from "https://cdn.jsdelivr.net/npm/vanjs-core@1.6.1/src/van.js"
-import {Tabs} from "../components/Tabs.js"
+import {Notif} from "../components/Notif.js"
 
+const {div, h1, header, main} = van.tags
 
-const {h1, h2, h3, h4, h5, h6, p, div, dialog, Tabs} = van.tags
-
-const Main() => div(
-    h1("Welcome to BetterCS"),
-    dialog("Thank you for installing BetterCS!", "It is really nice for me (the owner) to see that you are using BetterCS. I hope you enjoy it! It makes me really happy to see someone use my project."),
+const Main = () => div(
+    header(h1("Welcome to BetterCS")),
+    main(
+        Notif(
+            "Thank you for installing BetterCS!",
+            "It is really nice for me (the owner) to see that you are using BetterCS. I hope you enjoy it! It makes me really happy to see someone use my project.",
+        ),
+    ),
 )
+
+van.add(document.body, Main())
