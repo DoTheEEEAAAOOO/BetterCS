@@ -4,11 +4,14 @@ const {button, div, p, strong} = van.tags
 
 export const Notif = (title, message, duration = 9000) => {
     const visible = van.state(true)
-    const dismiss = () => {
+    let timeoutId
+    const dismiss = event => {
+        if (timeoutId) window.clearTimeout(timeoutId)
         visible.val = false
+        event?.currentTarget?.closest(".notif")?.remove()
     }
 
-    if (duration > 0) window.setTimeout(dismiss, duration)
+    if (duration > 0) timeoutId = window.setTimeout(() => dismiss(), duration)
 
     return div({class: "notif", hidden: () => !visible.val},
         div({class: "notif-copy", role: "status", "aria-live": "polite"},
