@@ -1,0 +1,10 @@
+@font-face {
+  font-family: "SamsungSans";
+  src: url("../../assets/SamsungOne-400.ttf") format("truetype");
+}
+
+
+body {
+    font-family: "SamsungSans", sans-serif;
+}
+
