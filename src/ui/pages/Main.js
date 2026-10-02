@@ -33,7 +33,9 @@ export const Main = () => div(
             label: "Download",
             content: div(
               h3("Download BetterCS"),
-              p("Get the any version of BetterCS here. It is made in Flask Python, so it is cross-platform and can run on any OS that supports Python. It is also open-source, so you can contribute to it if you want. If you cannot host it yourself, such as if you have a TV that can only run apps from the app store, you can download the latest version of BetterCS Prehoster, which currently support Android via APK, and Tizen via TPK."),
+              p("Get any version of BetterCS here. It is made in Flask Python, so it is cross-platform and can run on any OS that supports Python. It is also open-source, so you can contribute to it if you want. If you cannot host it yourself, such as if you have a TV that can only run apps from the app store, you can download the latest version of BetterCS Prehoster, which currently support Android via APK, and Tizen via TPK."),
+              button("Download BetterCS v1.0.Indev"),
+              button("Download BetterCS Prehoster v1.0.Indev"),
             ),
           },
         ],
