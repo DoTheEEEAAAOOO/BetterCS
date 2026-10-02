@@ -8,3 +8,8 @@ body {
     font-family: "SamsungSans", sans-serif;
 }
 
+button {
+    border: none;
+    background: linear-gradient();
+    corner-radius: 0;
+}
