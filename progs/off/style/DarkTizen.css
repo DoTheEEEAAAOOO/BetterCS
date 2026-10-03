@@ -139,6 +139,15 @@ header h1 {
     letter-spacing: -1px;
 }
 
+.music-toggle {
+    min-width: 140px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 14px;
+    font-size: 16px;
+    white-space: nowrap;
+}
+
 main {
     width: 100%;
     max-width: 1920px;
@@ -319,6 +328,28 @@ textarea {
         background 0.16s ease;
 }
 
+.repo-modes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    margin: 8px 0 20px;
+}
+
+.repo-mode-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.repo-mode-choice input {
+    width: 18px;
+    min-height: 18px;
+    margin: 0;
+    padding: 0;
+    accent-color: #49daff;
+}
+
 input::placeholder,
 textarea::placeholder {
     color: #83939a;
@@ -362,6 +393,21 @@ select {
 textarea {
     min-height: 150px;
     resize: vertical;
+}
+
+.repo-tree {
+    max-width: 100%;
+    max-height: 560px;
+    overflow: auto;
+    padding: 18px;
+    border: 1px solid rgba(167, 191, 199, 0.2);
+    border-radius: 3px;
+    color: #c9e6ee;
+    background: rgba(5, 10, 13, 0.8);
+    font-size: 14px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 section > div.cards {

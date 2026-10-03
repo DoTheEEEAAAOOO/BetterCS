@@ -1,6 +1,7 @@
 import art
 from flask import Flask, send_from_directory
 from pathlib import Path
+from backend.cloud import cloud_api
 
 print(art.text2art("B e t t e r C S", font="big", chr_ignore=True))
 print("Initting")
@@ -8,7 +9,7 @@ print("Initting")
 base_dir = Path(__file__).resolve().parent
 workspace_dir = base_dir.parents[1]
 pages_dir = base_dir / "pages"
-backend_dir = base_dir / "backend"
+frontend_dir = base_dir / "frontend"
 components_dir = base_dir / "components"
 style_dir = base_dir / "style"
 lib_dir = base_dir / "lib"
@@ -20,6 +21,7 @@ for page in pages_dir.glob("*.html"):
     pages[page.name] = page.read_text(encoding="utf-8")
 
 app = Flask(__name__)
+app.register_blueprint(cloud_api)
 
 @app.route("/")
 def home():
@@ -29,9 +31,9 @@ def home():
 def page_asset(filename):
     return send_from_directory(pages_dir, filename)
 
-@app.route("/backend/<path:filename>")
-def backend_asset(filename):
-    return send_from_directory(backend_dir, filename)
+@app.route("/frontend/<path:filename>")
+def frontend_asset(filename):
+    return send_from_directory(frontend_dir, filename)
 
 @app.route("/components/<path:filename>")
 def component_asset(filename):
