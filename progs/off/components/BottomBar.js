@@ -75,9 +75,9 @@ export const BottomBar = ({
     activeMenu.val = menus.length ? 0 : -1
     menuExpanded.val = false
     requestAnimationFrame(() => {
-      const focusTarget = menus.length
-        ? `${id}-menu-0`
-        : initialItems.length ? `${id}-list-item-0` : `${id}-close`
+      const focusTarget = initialItems.length
+        ? `${id}-list-item-0`
+        : menus.length ? `${id}-menu-0` : `${id}-close`
       document.getElementById(focusTarget)?.focus()
     })
   }
@@ -176,6 +176,10 @@ export const BottomBar = ({
       const offset = event.key === "ArrowRight" ? 1 : -1
       const nextIndex = (index + offset + listItems.val.length) % listItems.val.length
       focusListItem(nextIndex)
+    } else if (event.key === "ArrowUp" && menus.length) {
+      event.preventDefault()
+      activeMenu.val = Math.max(activeMenu.val, 0)
+      focusMenuButton(activeMenu.val)
     }
   }
 
@@ -250,31 +254,28 @@ export const BottomBar = ({
             ...listItems.val.map((item, index) => div({
               class: "bottom-bar-list-item",
               key: item.id,
+              ondragstart: event => {
+                event.dataTransfer?.setData("text/plain", item.id)
+                if (event.dataTransfer) event.dataTransfer.effectAllowed = "move"
+              },
+              ondragover: event => event.preventDefault(),
+              ondrop: event => {
+                event.preventDefault()
+                const draggedId = event.dataTransfer?.getData("text/plain")
+                const sourceIndex = listItems.val.findIndex(candidate => candidate.id === draggedId)
+                if (sourceIndex >= 0) moveListItem(sourceIndex, index - sourceIndex)
+              },
             },
               button({
                 id: `${id}-list-item-${index}`,
                 type: "button",
                 class: "bottom-bar-action",
                 title: item.label,
+                "aria-label": item.label,
+                draggable: true,
                 onclick: () => (item.onClick ?? item.action)?.(),
                 onkeydown: event => handleListKeydown(event, index),
               }, item.label),
-              button({
-                type: "button",
-                class: "bottom-bar-reorder move-left",
-                "aria-label": `Move ${item.label} left`,
-                title: "Move left",
-                disabled: index === 0,
-                onclick: () => moveListItem(index, -1),
-              }),
-              button({
-                type: "button",
-                class: "bottom-bar-reorder move-right",
-                "aria-label": `Move ${item.label} right`,
-                title: "Move right",
-                disabled: index === listItems.val.length - 1,
-                onclick: () => moveListItem(index, 1),
-              }),
             )),
           ),
         ),

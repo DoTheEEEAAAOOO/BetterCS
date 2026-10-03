@@ -8,7 +8,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, Response, jsonify, request
 from backend.session_store import load_saved_sessions, save_sessions
 
 
@@ -18,6 +18,24 @@ GITHUB_API = "https://api.github.com"
 TREE_FILE_PATH = ".bettercs/tree.json"
 SESSION_COOKIE = "bettercs_session"
 SESSION_MAX_AGE = 30 * 24 * 60 * 60
+DEFAULT_APP_SOURCES = {
+        "Files.js": '''export default function Files(van) {
+    const {div, h2, p} = van.tags
+    return div({class: "bettercs-app bettercs-files"},
+        h2("Files"),
+        p("The Files app is ready for your BetterCS repository."),
+    )
+}
+''',
+        "Placeholder.js": '''export default function Placeholder(van) {
+    const {div, h2, p} = van.tags
+    return div({class: "bettercs-app bettercs-placeholder"},
+        h2("Welcome to BetterCS"),
+        p("Choose an app from the bottom bar to get started."),
+    )
+}
+''',
+}
 
 
 def github_request(token, path, method="GET", payload=None):
@@ -51,13 +69,25 @@ def github_request(token, path, method="GET", payload=None):
 
 
 def current_session():
-    session_id = request.cookies.get(SESSION_COOKIE)
-    session = sessions.get(session_id) if session_id else None
-    if session and session.get("expiresAt", 0) <= time.time():
-        sessions.pop(session_id, None)
+    expired_session_ids = []
+    for session_id in request.cookies.getlist(SESSION_COOKIE):
+        session = sessions.get(session_id)
+        if session is None:
+            continue
+        if session.get("expiresAt", 0) <= time.time():
+            expired_session_ids.append(session_id)
+            continue
+        if expired_session_ids:
+            for expired_session_id in expired_session_ids:
+                sessions.pop(expired_session_id, None)
+            save_sessions(sessions)
+        return session
+
+    if expired_session_ids:
+        for expired_session_id in expired_session_ids:
+            sessions.pop(expired_session_id, None)
         save_sessions(sessions)
-        return None
-    return session
+    return None
 
 
 def require_session():
@@ -359,6 +389,178 @@ def restore_repository_tree(session):
     return session["tree"], None
 
 
+def initialize_empty_repository(session, repository, repo_path, branch, existing_entries=()):
+    existing_entries = list(existing_entries)
+    existing_app_names = {
+        entry["path"].split("/", 1)[1]
+        for entry in existing_entries
+        if entry.get("path", "").startswith("Apps/")
+        and entry["path"].count("/") == 1
+        and entry["path"].endswith(".js")
+    }
+    app_entries = [
+        {
+            "path": f"Apps/{filename}",
+            "mode": "100644",
+            "type": "blob",
+            "content": source,
+        }
+        for filename, source in DEFAULT_APP_SOURCES.items()
+        if filename not in existing_app_names
+    ]
+    initial_tree = build_tree(
+        [
+            *existing_entries,
+            *[{"path": entry["path"], "type": "blob", "mode": entry["mode"]} for entry in app_entries],
+        ],
+        repository,
+        branch,
+    )
+    metadata = json.dumps(
+        serialized_tree_for_storage(initial_tree),
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+    tree_entries = [*app_entries, {
+        "path": TREE_FILE_PATH,
+        "mode": "100644",
+        "type": "blob",
+        "content": metadata,
+    }]
+
+    ref_path = f"{repo_path}/git/ref/heads/{quote(branch, safe='')}"
+    ref_status, ref = github_request(session["token"], ref_path)
+    parent_sha = None
+    tree_payload = {"tree": tree_entries}
+    if ref_status == 200:
+        parent_sha = ref.get("object", {}).get("sha")
+        parent_status, parent_commit = github_request(
+            session["token"],
+            f"{repo_path}/git/commits/{quote(parent_sha or '', safe='')}",
+        )
+        if parent_status != 200:
+            return None, ("Could not read the empty repository's current commit.", 502)
+        tree_payload["base_tree"] = parent_commit.get("tree", {}).get("sha")
+    elif ref_status != 404:
+        return None, ("Could not inspect the repository branch before initializing it.", 502)
+
+    tree_status, created_tree = github_request(
+        session["token"],
+        f"{repo_path}/git/trees",
+        method="POST",
+        payload=tree_payload,
+    )
+    if tree_status != 201:
+        return None, ("GitHub could not create the initial Apps tree.", 502)
+
+    commit_payload = {
+        "message": "Initialize BetterCS apps",
+        "tree": created_tree.get("sha"),
+        "parents": [parent_sha] if parent_sha else [],
+    }
+    commit_status, commit = github_request(
+        session["token"],
+        f"{repo_path}/git/commits",
+        method="POST",
+        payload=commit_payload,
+    )
+    if commit_status != 201:
+        return None, ("GitHub could not commit the initial Apps files.", 502)
+
+    if parent_sha:
+        ref_write_status, _ = github_request(
+            session["token"],
+            f"{repo_path}/git/refs/heads/{quote(branch, safe='')}",
+            method="PATCH",
+            payload={"sha": commit.get("sha"), "force": False},
+        )
+    else:
+        ref_write_status, _ = github_request(
+            session["token"],
+            f"{repo_path}/git/refs",
+            method="POST",
+            payload={"ref": f"refs/heads/{branch}", "sha": commit.get("sha")},
+        )
+    if ref_write_status not in (200, 201):
+        return None, ("GitHub could not publish the initial Apps branch.", 502)
+
+    actual_entries = [
+        entry for entry in created_tree.get("tree", [])
+        if entry.get("path") != ".bettercs"
+        and not entry.get("path", "").startswith(".bettercs/")
+    ]
+    session["repo"] = repository
+    session["branch"] = branch
+    session["tree"] = build_tree(actual_entries, repository, branch)
+    session["base_files"] = {
+        path: {
+            "sha": node.get("sha"),
+            "mode": node.get("mode", "100644"),
+            "type": node.get("type", "blob"),
+        }
+        for path, node in iter_tree_files(session["tree"]["root"])
+        if node.get("sha")
+    }
+    session["pending"] = {}
+    save_sessions(sessions)
+    return session["tree"], None
+
+
+def ensure_default_apps(session, tree):
+    apps_directory = get_tree_node(tree, "Apps")
+    existing_names = set()
+    if apps_directory and apps_directory.get("type") == "directory":
+        existing_names = {
+            name for name, node in apps_directory["children"].items()
+            if node.get("type") != "directory" and name.endswith(".js")
+        }
+
+    missing_sources = {
+        name: source
+        for name, source in DEFAULT_APP_SOURCES.items()
+        if name not in existing_names and f"Apps/{name}" not in session["pending"]
+    }
+    if not missing_sources:
+        return tree, None
+
+    if session["pending"]:
+        apps_directory = tree["root"]["children"].setdefault(
+            "Apps",
+            {"type": "directory", "children": {}},
+        )
+        for filename, source in missing_sources.items():
+            path = f"Apps/{filename}"
+            apps_directory["children"][filename] = {
+                "type": "blob",
+                "path": path,
+                "sha": None,
+                "size": len(source.encode("utf-8")),
+                "mode": "100644",
+            }
+            session["pending"][path] = {"content": source, "mode": "100644"}
+        return tree, None
+
+    existing_entries = [
+        {
+            "path": path,
+            "type": node.get("type", "blob"),
+            "sha": node.get("sha"),
+            "mode": node.get("mode", "100644"),
+            "size": node.get("size"),
+        }
+        for path, node in iter_tree_files(tree["root"])
+    ]
+    owner, repo_name = session["repo"].split("/", 1)
+    repo_path = f"/repos/{quote(owner, safe='')}/{quote(repo_name, safe='')}"
+    return initialize_empty_repository(
+        session,
+        session["repo"],
+        repo_path,
+        tree["branch"],
+        existing_entries=existing_entries,
+    )
+
+
 @cloud_api.post("/api/login")
 def login():
     payload = request.get_json(silent=True) or {}
@@ -398,8 +600,9 @@ def login():
         secure=request.is_secure,
         samesite="Lax",
         max_age=SESSION_MAX_AGE,
-        path="/api",
+        path="/",
     )
+    response.delete_cookie(SESSION_COOKIE, path="/api", samesite="Lax")
     return response
 
 
@@ -411,6 +614,7 @@ def logout():
         save_sessions(sessions)
 
     response = jsonify({"ok": True, "message": "Signed out of BetterCS."})
+    response.delete_cookie(SESSION_COOKIE, path="/", samesite="Lax")
     response.delete_cookie(SESSION_COOKIE, path="/api", samesite="Lax")
     return response
 
@@ -436,7 +640,7 @@ def link_repository():
             payload={
                 "name": name,
                 "private": True,
-                "auto_init": True,
+                "auto_init": False,
                 "description": "BetterCS cloud storage",
             },
         )
@@ -469,28 +673,86 @@ def link_repository():
     owner = details.get("owner", {}).get("login", owner)
     name = details.get("name", name)
     repo_path = f"/repos/{quote(owner, safe='')}/{quote(name, safe='')}"
+    normalized_repo = f"{owner}/{name}"
     if details.get("permissions", {}).get("push") is False:
         return jsonify({"ok": False, "message": "This GitHub token cannot write to that repository."}), 403
 
     branch = details.get("default_branch")
     if not branch:
-        return jsonify({"ok": False, "message": "The repository has no default branch yet."}), 400
+        if details.get("size", 0) not in (0, None):
+            return jsonify({"ok": False, "message": "The repository has no default branch yet."}), 400
+        branch = "main"
+        tree, initialization_error = initialize_empty_repository(
+            session,
+            normalized_repo,
+            repo_path,
+            branch,
+        )
+        if initialization_error:
+            return jsonify({"ok": False, "message": initialization_error[0]}), initialization_error[1]
+        return jsonify({
+            "ok": True,
+            "message": f"Initialized {normalized_repo} with the Files and Placeholder apps.",
+            "repo": normalized_repo,
+            "tree": tree,
+            "initialized": True,
+        })
 
     tree_path = f"{repo_path}/git/trees/{quote(branch, safe='')}?recursive=1"
     tree_status, tree_data = github_request(session["token"], tree_path)
     if tree_status is None:
         return jsonify({"ok": False, "message": "Could not contact GitHub. Try again later."}), 502
+    if tree_status == 404 and details.get("size", 0) == 0:
+        tree, initialization_error = initialize_empty_repository(
+            session,
+            normalized_repo,
+            repo_path,
+            branch,
+        )
+        if initialization_error:
+            return jsonify({"ok": False, "message": initialization_error[0]}), initialization_error[1]
+        return jsonify({
+            "ok": True,
+            "message": f"Initialized {normalized_repo} with the Files and Placeholder apps.",
+            "repo": normalized_repo,
+            "tree": tree,
+            "initialized": True,
+        })
     if tree_status != 200:
         return jsonify({"ok": False, "message": "Could not read the repository file tree."}), 502
     if tree_data.get("truncated"):
         return jsonify({"ok": False, "message": "This repository is too large to load as one file tree."}), 413
-
-    normalized_repo = f"{owner}/{name}"
     entries = [
         entry for entry in tree_data.get("tree", [])
         if not entry.get("path", "").startswith(".bettercs/")
         and entry.get("path") != ".bettercs"
     ]
+    existing_app_names = {
+        entry["path"].split("/", 1)[1]
+        for entry in entries
+        if entry.get("path", "").startswith("Apps/")
+        and entry["path"].count("/") == 1
+        and entry["path"].endswith(".js")
+    }
+    missing_default_apps = set(DEFAULT_APP_SOURCES) - existing_app_names
+    if not entries or missing_default_apps:
+        tree, initialization_error = initialize_empty_repository(
+            session,
+            normalized_repo,
+            repo_path,
+            branch,
+            existing_entries=entries,
+        )
+        if initialization_error:
+            return jsonify({"ok": False, "message": initialization_error[0]}), initialization_error[1]
+        return jsonify({
+            "ok": True,
+            "message": f"Initialized {normalized_repo} with the Files and Placeholder apps.",
+            "repo": normalized_repo,
+            "tree": tree,
+            "initialized": True,
+        })
+
     file_tree = build_tree(entries, normalized_repo, branch)
     tree_json = json.dumps(serialized_tree_for_storage(file_tree), separators=(",", ":"), ensure_ascii=False)
     contents_path = f"{repo_path}/contents/{quote(TREE_FILE_PATH, safe='/')}"
@@ -573,6 +835,113 @@ def get_tree():
         "tree": session["tree"],
         "pendingChanges": count_pending_changes(session),
     })
+
+
+def require_repository_tree(session):
+    if session["repo"] is None:
+        return None, ("Link a GitHub repository first.", 409)
+    if session["tree"] is None:
+        tree, error = restore_repository_tree(session)
+        if error:
+            return None, error
+    tree, error = ensure_default_apps(session, session["tree"])
+    if error:
+        return None, error
+    return tree, None
+
+
+@cloud_api.get("/api/apps")
+def list_apps():
+    session, error = require_session()
+    if error:
+        return error
+    tree, tree_error = require_repository_tree(session)
+    if tree_error:
+        return jsonify({"ok": False, "message": tree_error[0]}), tree_error[1]
+
+    apps_directory = get_tree_node(tree, "Apps")
+    apps = []
+    if apps_directory and apps_directory.get("type") == "directory":
+        for filename, node in apps_directory["children"].items():
+            if node.get("type") == "directory" or not filename.endswith(".js"):
+                continue
+            apps.append({
+                "name": filename[:-3],
+                "filename": filename,
+            })
+
+    return jsonify({"ok": True, "repo": session["repo"], "apps": apps})
+
+
+@cloud_api.get("/api/apps/<string:app_name>")
+def get_app_source(app_name):
+    session, error = require_session()
+    if error:
+        return error
+    tree, tree_error = require_repository_tree(session)
+    if tree_error:
+        return jsonify({"ok": False, "message": tree_error[0]}), tree_error[1]
+
+    name = app_name[:-3] if app_name.endswith(".js") else app_name
+    if not re.fullmatch(r"[A-Za-z0-9_-][A-Za-z0-9_.-]*", name):
+        return jsonify({"ok": False, "message": "Invalid app name."}), 400
+
+    source, source_error = read_app_source(session, tree, name)
+    if source_error:
+        return jsonify({"ok": False, "message": source_error[0]}), source_error[1]
+    return jsonify({"ok": True, "name": name, "source": source})
+
+
+def read_app_source(session, tree, name):
+    relative_path = f"Apps/{name}.js"
+    node = get_tree_node(tree, relative_path)
+    if node is None or node.get("type") == "directory":
+        return None, (f"App {name} was not found in the repository.", 404)
+
+    pending = session["pending"].get(relative_path)
+    if pending is None and relative_path in session["pending"]:
+        return None, (f"App {name} has been removed.", 404)
+    if pending and "content" in pending:
+        source = pending["content"]
+    else:
+        if not node.get("sha"):
+            return None, (f"App {name} has no committed source yet.", 404)
+        owner, repo_name = session["repo"].split("/", 1)
+        repo_path = f"/repos/{quote(owner, safe='')}/{quote(repo_name, safe='')}"
+        contents_path = f"{repo_path}/contents/{quote(relative_path, safe='/')}"
+        status, contents = github_request(
+            session["token"],
+            f"{contents_path}?ref={quote(tree['branch'], safe='')}",
+        )
+        if status is None:
+            return None, ("Could not contact GitHub. Try again later.", 502)
+        if status != 200:
+            return None, (f"Could not load app {name} from GitHub.", 502)
+        try:
+            source = base64.b64decode(contents.get("content", "")).decode("utf-8")
+        except (ValueError, UnicodeDecodeError):
+            return None, (f"App {name} is not valid UTF-8 JavaScript.", 422)
+
+    return source, None
+
+
+@cloud_api.get("/Apps/<string:app_name>")
+def serve_app_module(app_name):
+    session, error = require_session()
+    if error:
+        return error
+    tree, tree_error = require_repository_tree(session)
+    if tree_error:
+        return jsonify({"ok": False, "message": tree_error[0]}), tree_error[1]
+
+    name = app_name[:-3] if app_name.endswith(".js") else app_name
+    if not re.fullmatch(r"[A-Za-z0-9_-][A-Za-z0-9_.-]*", name):
+        return jsonify({"ok": False, "message": "Invalid app name."}), 400
+    source, source_error = read_app_source(session, tree, name)
+    if source_error:
+        return jsonify({"ok": False, "message": source_error[0]}), source_error[1]
+
+    return Response(source, mimetype="text/javascript", headers={"Cache-Control": "no-store"})
 
 
 @cloud_api.post("/api/tree/operations")

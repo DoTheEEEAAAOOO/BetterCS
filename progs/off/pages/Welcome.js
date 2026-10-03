@@ -143,7 +143,7 @@ const openMain = async () => {
 
     try {
         const {Main: MainPage} = await import("./Main.js")
-        const mainPage = MainPage()
+        const mainPage = await MainPage()
         van.add(document.body, mainPage)
         document.getElementById("welcome-screen")?.remove()
     } catch (error) {
