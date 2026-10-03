@@ -1,7 +1,7 @@
 import van from "../../node_modules/vanjs-core/src/van.js"
 import {Tabs} from "../components/Tabs.js"
 
-const {a, div, h1, h2, h3, header, main, p, section} = van.tags
+const {a, button, div, h1, h2, h3, header, main, p, section} = van.tags
 
 export const Main = () => div(
   header(h1("BetterCS")),

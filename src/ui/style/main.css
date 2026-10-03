@@ -60,6 +60,7 @@ header {
     background:
         linear-gradient(180deg, rgba(16,23,29,0.96), rgba(8,12,16,0.9));
     box-shadow: 0 8px 35px rgba(0,0,0,0.32);
+    animation: tv-header-arrive 0.48s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 header h1 {
@@ -74,6 +75,10 @@ main {
     max-width: 1920px;
     margin: 0 auto;
     padding: 64px 6vw 100px;
+}
+
+main > section {
+    animation: tv-content-arrive 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) 0.06s both;
 }
 
 nav {
@@ -111,6 +116,9 @@ nav a:focus {
         0 0 18px rgba(0, 194, 255, 0.15),
         inset 0 0 16px rgba(0, 194, 255, 0.04);
     outline: none;
+    position: relative;
+    z-index: 1;
+    transform: translateY(-2px) scale(1.045);
 }
 
 nav a:active {
@@ -177,7 +185,10 @@ button:focus {
         0 0 24px rgba(0, 204, 255, 0.28),
         inset 0 0 20px rgba(0, 209, 255, 0.08);
     outline: none;
-    transform: scale(1.1);
+    position: relative;
+    z-index: 1;
+    transform: translateY(-2px) scale(1.06);
+    animation: tv-focus-settle 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 button:active {
@@ -209,6 +220,13 @@ button:active {
     color: #b9c8ce;
     background: transparent;
     font-size: 17px;
+    transform-origin: center bottom;
+    transition:
+        color 0.18s ease,
+        background 0.18s ease,
+        border-color 0.18s ease,
+        box-shadow 0.18s ease,
+        transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .tabs-trigger[aria-selected="true"] {
@@ -221,11 +239,17 @@ button:active {
 .tabs-trigger:focus-visible {
     outline: 2px solid #49daff;
     outline-offset: 2px;
+    position: relative;
+    z-index: 1;
+    transform: translateY(-2px) scale(1.045);
+    box-shadow: 0 0 18px rgba(0, 194, 255, 0.2);
 }
 
 .tabs-panel {
     min-height: 180px;
     padding: 28px 0;
+    animation: tv-panel-reveal 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    transform-origin: top left;
 }
 
 input,
@@ -342,6 +366,7 @@ section > div.loading-area {
     background:
         radial-gradient(circle at 50% 50%, rgba(0, 179, 235, 0.055), transparent 34%),
         linear-gradient(145deg, rgba(19,28,33,0.98), rgba(8,12,15,0.98));
+    animation: tv-content-arrive 0.38s ease-out both;
 }
 
 [aria-busy="true"] {
@@ -422,6 +447,56 @@ section > div.loading-area {
     100% {
         opacity: 0.45;
         transform: scale(0.94);
+    }
+}
+
+@keyframes tv-header-arrive {
+    from {
+        opacity: 0;
+        transform: translateY(-12px) scale(0.99);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes tv-content-arrive {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes tv-panel-reveal {
+    from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.99);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes tv-focus-settle {
+    0% {
+        transform: translateY(0) scale(0.97);
+    }
+
+    72% {
+        transform: translateY(-3px) scale(1.075);
+    }
+
+    100% {
+        transform: translateY(-2px) scale(1.06);
     }
 }
 
@@ -738,5 +813,16 @@ section:nth-of-type(4) {
     [aria-busy="true"] {
         margin-top: 45px;
         margin-bottom: 45px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
     }
 }
