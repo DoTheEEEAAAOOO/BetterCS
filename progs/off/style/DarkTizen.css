@@ -633,7 +633,6 @@ textarea {
     gap: 7px;
     padding: 7px 4px;
     border-color: transparent;
-    background: transparent;
     color: #e4f0f3;
     font-size: 14px;
     white-space: normal;
@@ -673,7 +672,6 @@ textarea {
 .bottom-bar-action:hover,
 .bottom-bar-action:focus-visible {
     border-color: rgba(40, 199, 223, 0.62);
-    background: rgba(40, 199, 223, 0.13);
     box-shadow: 0 0 12px rgba(40, 199, 223, 0.12);
     color: #ffffff;
     outline: none;
@@ -980,10 +978,9 @@ textarea {
     min-height: 54px;
     flex-direction: row;
     padding: 0 20px;
-    border-right: 1px solid rgba(220, 232, 236, 0.15);
-    border-radius: 0;
+    border: 1px solid rgba(116, 194, 207, 0.38);
+    border-radius: 3px;
     color: #e4f0f3;
-    background: transparent;
     box-shadow: none;
     font-size: 16px;
     text-align: center;
@@ -992,11 +989,21 @@ textarea {
 
 .bottom-bar .bottom-bar-action:hover,
 .bottom-bar .bottom-bar-action:focus-visible {
-    border-right-color: transparent;
-    border-bottom: 2px solid #28c7df;
-    background: rgba(40, 199, 223, 0.08);
-    box-shadow: inset 0 -7px 12px rgba(40, 199, 223, 0.06);
+    border-color: #54d9e9;
+    box-shadow: 0 0 14px rgba(40, 199, 223, 0.2);
     transform: translateY(-2px) scale(1.035);
+}
+
+.bottom-bar .bottom-bar-menu-trigger,
+.bottom-bar .bottom-bar-menu-trigger:hover,
+.bottom-bar .bottom-bar-menu-trigger:focus-visible,
+.bottom-bar .bottom-bar-menu-trigger.is-active,
+.bottom-bar .bottom-bar-menu-item,
+.bottom-bar .bottom-bar-menu-item:hover,
+.bottom-bar .bottom-bar-menu-item:focus-visible {
+    background: transparent;
+    background-image: none;
+    box-shadow: none;
 }
 
 @media (max-width: 760px) {
