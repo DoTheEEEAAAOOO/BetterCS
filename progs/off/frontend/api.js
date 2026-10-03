@@ -30,6 +30,11 @@ export const getSession = () => request("/api/session")
 
 export const getTree = () => request("/api/tree")
 
+export const logout = () => request("/api/logout", {
+    method: "POST",
+    body: JSON.stringify({}),
+})
+
 const mutateTree = (operation, values = {}) => request("/api/tree/operations", {
     method: "POST",
     body: JSON.stringify({operation, ...values}),

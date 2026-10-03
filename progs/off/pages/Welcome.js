@@ -129,14 +129,46 @@ const submitStepThree = async () => {
         linkedRepo.val = result.repo
         treeJson.val = JSON.stringify(result.tree, null, 2)
         sessionStatus.val = `Signed in as ${session.username}. Repository tree loaded from ${result.repo}.`
+        return true
     } catch (error) {
         sessionStatus.val = error.message
+        return false
     } finally {
         sessionBusy.val = false
     }
 }
 
-const Main = () => div(
+const openMain = async () => {
+    if (!await submitStepThree()) return
+
+    try {
+        const {Main: MainPage} = await import("./Main.js")
+        const mainPage = MainPage()
+        van.add(document.body, mainPage)
+        document.getElementById("welcome-screen")?.remove()
+    } catch (error) {
+        sessionStatus.val = `Could not open BetterCS: ${error.message}`
+    }
+}
+
+const resumeSavedSession = async () => {
+    try {
+        const session = await getSession()
+        if (!session.username) return
+
+        loginStatus.val = `Welcome back, ${session.username}.`
+        if (session.repo) {
+            await openMain()
+        } else {
+            repoStatus.val = "Your GitHub account is saved. Link a repository to continue."
+            openStepTwo()
+        }
+    } catch {
+        // No saved session; keep the sign-in screen ready.
+    }
+}
+
+const Main = () => div({id: "welcome-screen"},
     header(
         h1("Welcome to BetterCS"),
         button({class: "music-toggle", type: "button", onclick: toggleMusic},
@@ -262,7 +294,7 @@ const Main = () => div(
                     content: div(
                         h1("OOBE: Step 3"),
                         p("Sign in to BetterCS with the GitHub account and repository you linked in the previous steps."),
-                        button({type: "button", onclick: submitStepThree, disabled: () => sessionBusy.val},
+                        button({type: "button", onclick: openMain, disabled: () => sessionBusy.val},
                             () => sessionBusy.val ? "Loading..." : "Log in to BetterCS",
                         ),
                         p({role: "status", "aria-live": "polite"}, () => sessionStatus.val),
@@ -276,3 +308,4 @@ const Main = () => div(
 )
 
 van.add(document.body, Main())
+resumeSavedSession()

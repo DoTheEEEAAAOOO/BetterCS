@@ -2,19 +2,22 @@ import base64
 import json
 import re
 import secrets
+import time
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 from flask import Blueprint, jsonify, request
+from backend.session_store import load_saved_sessions, save_sessions
 
 
 cloud_api = Blueprint("cloud_api", __name__)
-sessions = {}
+sessions = load_saved_sessions()
 GITHUB_API = "https://api.github.com"
 TREE_FILE_PATH = ".bettercs/tree.json"
 SESSION_COOKIE = "bettercs_session"
+SESSION_MAX_AGE = 30 * 24 * 60 * 60
 
 
 def github_request(token, path, method="GET", payload=None):
@@ -49,7 +52,12 @@ def github_request(token, path, method="GET", payload=None):
 
 def current_session():
     session_id = request.cookies.get(SESSION_COOKIE)
-    return sessions.get(session_id) if session_id else None
+    session = sessions.get(session_id) if session_id else None
+    if session and session.get("expiresAt", 0) <= time.time():
+        sessions.pop(session_id, None)
+        save_sessions(sessions)
+        return None
+    return session
 
 
 def require_session():
@@ -303,6 +311,54 @@ def count_pending_changes(session):
     return len(session["pending"])
 
 
+def restore_repository_tree(session):
+    repository = session.get("repo")
+    if not repository or "/" not in repository:
+        return None, ("Link a GitHub repository first.", 409)
+
+    owner, name = repository.split("/", 1)
+    repo_path = f"/repos/{quote(owner, safe='')}/{quote(name, safe='')}"
+    repo_status, details = github_request(session["token"], repo_path)
+    if repo_status is None:
+        return None, ("Could not contact GitHub. Try again later.", 502)
+    if repo_status != 200:
+        return None, ("The saved GitHub repository is no longer accessible.", 403)
+
+    branch = details.get("default_branch") or session.get("branch")
+    if not branch:
+        return None, ("The saved repository has no default branch.", 409)
+
+    tree_status, tree_data = github_request(
+        session["token"],
+        f"{repo_path}/git/trees/{quote(branch, safe='')}?recursive=1",
+    )
+    if tree_status is None:
+        return None, ("Could not contact GitHub. Try again later.", 502)
+    if tree_status != 200:
+        return None, ("Could not reload the repository file tree.", 502)
+    if tree_data.get("truncated"):
+        return None, ("This repository is too large to load as one file tree.", 413)
+
+    entries = [
+        entry for entry in tree_data.get("tree", [])
+        if entry.get("path") != ".bettercs"
+        and not entry.get("path", "").startswith(".bettercs/")
+    ]
+    session["tree"] = build_tree(entries, repository, branch)
+    session["branch"] = branch
+    session["base_files"] = {
+        path: {
+            "sha": node.get("sha"),
+            "mode": node.get("mode", "100644"),
+            "type": node.get("type", "blob"),
+        }
+        for path, node in iter_tree_files(session["tree"]["root"])
+        if node.get("sha")
+    }
+    session["pending"] = {}
+    return session["tree"], None
+
+
 @cloud_api.post("/api/login")
 def login():
     payload = request.get_json(silent=True) or {}
@@ -322,14 +378,18 @@ def login():
         return jsonify({"ok": False, "message": "That token belongs to a different GitHub username."}), 403
 
     session_id = secrets.token_urlsafe(32)
+    sessions.clear()
     sessions[session_id] = {
         "token": token,
         "username": user["login"],
         "repo": None,
+        "branch": None,
+        "expiresAt": time.time() + SESSION_MAX_AGE,
         "tree": None,
         "base_files": {},
         "pending": {},
     }
+    save_sessions(sessions)
     response = jsonify({"ok": True, "message": f"Signed in as {user['login']}.", "username": user["login"]})
     response.set_cookie(
         SESSION_COOKIE,
@@ -337,9 +397,21 @@ def login():
         httponly=True,
         secure=request.is_secure,
         samesite="Lax",
-        max_age=86400,
+        max_age=SESSION_MAX_AGE,
         path="/api",
     )
+    return response
+
+
+@cloud_api.post("/api/logout")
+def logout():
+    session_id = request.cookies.get(SESSION_COOKIE)
+    if session_id:
+        sessions.pop(session_id, None)
+        save_sessions(sessions)
+
+    response = jsonify({"ok": True, "message": "Signed out of BetterCS."})
+    response.delete_cookie(SESSION_COOKIE, path="/api", samesite="Lax")
     return response
 
 
@@ -450,6 +522,7 @@ def link_repository():
         return jsonify({"ok": False, "message": "GitHub could not save the BetterCS file tree. Check token write access."}), 502
 
     session["repo"] = normalized_repo
+    session["branch"] = branch
     session["tree"] = file_tree
     session["base_files"] = {
         path: {
@@ -461,6 +534,7 @@ def link_repository():
         if node.get("sha")
     }
     session["pending"] = {}
+    save_sessions(sessions)
     return jsonify({
         "ok": True,
         "message": f"Linked {normalized_repo} as your BetterCS cloud storage.",
@@ -487,8 +561,12 @@ def get_tree():
     session, error = require_session()
     if error:
         return error
-    if session["repo"] is None or session["tree"] is None:
+    if session["repo"] is None:
         return jsonify({"ok": False, "message": "Link a GitHub repository first."}), 409
+    if session["tree"] is None:
+        tree, error = restore_repository_tree(session)
+        if error:
+            return jsonify({"ok": False, "message": error[0]}), error[1]
     return jsonify({
         "ok": True,
         "repo": session["repo"],
