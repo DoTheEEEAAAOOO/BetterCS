@@ -2,10 +2,9 @@ import van from "../lib/van.js"
 import {BottomBar} from "../components/BottomBar.js"
 import {listApps, logout, SwitchApp} from "../frontend/api.js"
 
-const {div, h1, main, p} = van.tags
+const {div, main, p} = van.tags
 const logoutStatus = van.state("")
 
-const focusHome = () => document.getElementById("main-title")?.focus()
 const reloadApp = () => window.location.reload()
 const logOut = async () => {
     try {
@@ -24,15 +23,10 @@ export const Main = async () => {
         logoutStatus.val = error.message
     }
 
-    const activeApp = van.state("")
-    const appHost = div({id: "app-host", "aria-live": "polite"},
-        h1("BetterCS"),
-        p("Choose an app from the bottom bar."),
-    )
+    const appHost = div({id: "app-host", "aria-live": "polite"})
     const openApp = async name => {
         try {
-            const result = await SwitchApp(name, appHost)
-            if (result.ok) activeApp.val = result.name
+            await SwitchApp(name, appHost)
         } catch (error) {
             logoutStatus.val = error.message
         }
@@ -41,8 +35,6 @@ export const Main = async () => {
 
     const page = div(
         main({id: "main-content"},
-            h1({id: "main-title", tabindex: -1}, "BetterCS"),
-            p(() => activeApp.val ? `Running ${activeApp.val}` : "Your BetterCS session is active."),
             p({role: "status", "aria-live": "polite"}, () => logoutStatus.val),
             appHost,
         ),

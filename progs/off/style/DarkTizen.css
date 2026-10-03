@@ -430,6 +430,79 @@ textarea {
     animation: tizen-panel-reveal 0.3s ease-out both;
 }
 
+.files-app {
+    display: grid;
+    width: 100%;
+    gap: 16px;
+}
+
+.files-app h2 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.files-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.files-toolbar button,
+.files-operation-form button {
+    min-width: 120px;
+    min-height: 42px;
+    margin: 0;
+    padding: 0 16px;
+    font-size: 15px;
+}
+
+.files-operation-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 760px;
+    gap: 2px;
+}
+
+.files-operation-form label {
+    color: #d8e5e9;
+    font-size: 15px;
+}
+
+.files-operation-form input,
+.files-operation-form select,
+.files-operation-form textarea {
+    width: 100%;
+    max-width: none;
+    min-height: 44px;
+    margin: 4px 0 12px;
+    font-size: 16px;
+}
+
+.files-operation-form textarea {
+    min-height: 112px;
+}
+
+.files-status {
+    min-height: 1.5em;
+    margin: 0;
+    font-size: 14px;
+}
+
+.files-tree-json {
+    width: 100%;
+    max-height: min(48vh, 560px);
+    overflow: auto;
+    margin: 0;
+    padding: 16px;
+    border: 1px solid rgba(167, 191, 199, 0.2);
+    border-radius: 3px;
+    color: #d7e9ee;
+    background: rgba(5, 10, 13, 0.84);
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+    white-space: pre;
+    tab-size: 2;
+}
+
 .bottom-bar-component {
     position: relative;
     z-index: 20;

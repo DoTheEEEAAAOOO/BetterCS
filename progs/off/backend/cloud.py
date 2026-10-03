@@ -4,6 +4,7 @@ import re
 import secrets
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -18,15 +19,10 @@ GITHUB_API = "https://api.github.com"
 TREE_FILE_PATH = ".bettercs/tree.json"
 SESSION_COOKIE = "bettercs_session"
 SESSION_MAX_AGE = 30 * 24 * 60 * 60
+FILES_APP_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "Files.js").read_text(encoding="utf-8")
+LEGACY_FILES_APP_MARKER = "The Files app is ready for your BetterCS repository."
 DEFAULT_APP_SOURCES = {
-        "Files.js": '''export default function Files(van) {
-    const {div, h2, p} = van.tags
-    return div({class: "bettercs-app bettercs-files"},
-        h2("Files"),
-        p("The Files app is ready for your BetterCS repository."),
-    )
-}
-''',
+        "Files.js": FILES_APP_SOURCE,
         "Placeholder.js": '''export default function Placeholder(van) {
     const {div, h2, p} = van.tags
     return div({class: "bettercs-app bettercs-placeholder"},
@@ -521,6 +517,21 @@ def ensure_default_apps(session, tree):
         if name not in existing_names and f"Apps/{name}" not in session["pending"]
     }
     if not missing_sources:
+        files_node = get_tree_node(tree, "Apps/Files.js")
+        files_path = "Apps/Files.js"
+        if (
+            files_node
+            and files_node.get("type") != "directory"
+            and files_node.get("sha")
+            and files_path not in session["pending"]
+        ):
+            current_source, source_error = read_app_source(session, tree, "Files")
+            if not source_error and LEGACY_FILES_APP_MARKER in current_source:
+                session["pending"][files_path] = {
+                    "content": FILES_APP_SOURCE,
+                    "mode": files_node.get("mode", "100644"),
+                }
+                files_node["size"] = len(FILES_APP_SOURCE.encode("utf-8"))
         return tree, None
 
     if session["pending"]:
