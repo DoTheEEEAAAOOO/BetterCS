@@ -662,6 +662,58 @@ textarea {
     font-weight: 400;
 }
 
+.bettercs-better-run {
+    display: grid;
+    width: 100%;
+    gap: 12px;
+}
+
+.bettercs-better-run h2 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.bettercs-better-run > p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.better-run-editor {
+    width: 100%;
+    max-width: none;
+    min-height: 220px;
+    margin: 0;
+    resize: vertical;
+    color: #d7e9ee;
+    background: rgba(5, 10, 13, 0.88);
+    font: 14px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+    tab-size: 4;
+}
+
+.bettercs-better-run > button {
+    justify-self: start;
+    min-width: 120px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 16px;
+    font-size: 15px;
+}
+
+.better-run-status {
+    min-height: 1.4em;
+    margin: 0;
+    font-size: 14px;
+}
+
+.better-run-preview {
+    min-height: 120px;
+    overflow: auto;
+    padding: 16px;
+    border: 1px solid rgba(167, 191, 199, 0.2);
+    border-radius: 3px;
+    background: rgba(5, 10, 13, 0.55);
+}
+
 @media (max-width: 600px) {
     .better-surf-page,
     .better-surf-empty {
