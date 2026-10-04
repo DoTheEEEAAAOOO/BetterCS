@@ -549,6 +549,33 @@ def restore_repository_tree(session):
     return session["tree"], None
 
 
+def reload_session_tree(session, repo_path, branch):
+    tree_status, tree_data = github_request(
+        session["token"],
+        f"{repo_path}/git/trees/{quote(branch, safe='')}?recursive=1",
+    )
+    if tree_status != 200 or tree_data.get("truncated"):
+        return False
+
+    entries = [
+        entry for entry in tree_data.get("tree", [])
+        if entry.get("path") != ".bettercs"
+        and not entry.get("path", "").startswith(".bettercs/")
+    ]
+    session["tree"] = build_tree(entries, session["repo"], branch)
+    session["base_files"] = {
+        path: {
+            "sha": node.get("sha"),
+            "mode": node.get("mode", "100644"),
+            "type": node.get("type", "blob"),
+        }
+        for path, node in iter_tree_files(session["tree"]["root"])
+        if node.get("sha")
+    }
+    session["pending"] = {}
+    return True
+
+
 def initialize_empty_repository(session, repository, repo_path, branch, existing_entries=()):
     existing_entries = list(existing_entries)
     existing_app_names = {
@@ -644,24 +671,20 @@ def initialize_empty_repository(session, repository, repo_path, branch, existing
     if ref_write_status not in (200, 201):
         return None, ("GitHub could not publish the initial Apps branch.", 502)
 
-    actual_entries = [
-        entry for entry in created_tree.get("tree", [])
-        if entry.get("path") != ".bettercs"
-        and not entry.get("path", "").startswith(".bettercs/")
-    ]
     session["repo"] = repository
     session["branch"] = branch
-    session["tree"] = build_tree(actual_entries, repository, branch)
-    session["base_files"] = {
-        path: {
-            "sha": node.get("sha"),
-            "mode": node.get("mode", "100644"),
-            "type": node.get("type", "blob"),
+    if not reload_session_tree(session, repo_path, branch):
+        session["tree"] = initial_tree
+        session["base_files"] = {
+            path: {
+                "sha": node.get("sha"),
+                "mode": node.get("mode", "100644"),
+                "type": node.get("type", "blob"),
+            }
+            for path, node in iter_tree_files(initial_tree["root"])
+            if node.get("sha")
         }
-        for path, node in iter_tree_files(session["tree"]["root"])
-        if node.get("sha")
-    }
-    session["pending"] = {}
+        session["pending"] = {}
     save_sessions(sessions)
     return session["tree"], None
 
@@ -815,7 +838,6 @@ def login():
         return jsonify({"ok": False, "message": "That token belongs to a different GitHub username."}), 403
 
     session_id = secrets.token_urlsafe(32)
-    sessions.clear()
     sessions[session_id] = {
         "token": token,
         "username": user["login"],
@@ -1334,23 +1356,24 @@ def push_tree():
     if update_status != 200:
         return jsonify({"ok": False, "message": "The repository changed while pushing. Refresh its tree before trying again."}), 409
 
-    pushed_entries = [
-        entry for entry in created_tree.get("tree", [])
-        if entry.get("path") != TREE_FILE_PATH
-        and not entry.get("path", "").startswith(".bettercs/")
-    ]
-    session["tree"] = build_tree(pushed_entries, session["repo"], branch)
-    session["tree"]["updatedAt"] = tree_updated_at
-    session["base_files"] = {
-        path: {
-            "sha": node.get("sha"),
-            "mode": node.get("mode", "100644"),
-            "type": node.get("type", "blob"),
+    if not reload_session_tree(session, repo_path, branch):
+        pushed_entries = [
+            entry for entry in created_tree.get("tree", [])
+            if entry.get("path") != TREE_FILE_PATH
+            and not entry.get("path", "").startswith(".bettercs/")
+        ]
+        session["tree"] = build_tree(pushed_entries, session["repo"], branch)
+        session["base_files"] = {
+            path: {
+                "sha": node.get("sha"),
+                "mode": node.get("mode", "100644"),
+                "type": node.get("type", "blob"),
+            }
+            for path, node in iter_tree_files(session["tree"]["root"])
+            if node.get("sha")
         }
-        for path, node in iter_tree_files(session["tree"]["root"])
-        if node.get("sha")
-    }
-    session["pending"] = {}
+        session["pending"] = {}
+    session["tree"]["updatedAt"] = tree_updated_at
     return jsonify({
         "ok": True,
         "message": f"Pushed the updated tree to {session['repo']}. ",
