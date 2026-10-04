@@ -28,13 +28,15 @@ MAX_BROWSER_REDIRECTS = 5
 BETTER_FILES_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "BetterFiles.js").read_text(encoding="utf-8")
 BETTERSURF_APP_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "BetterSurf.js").read_text(encoding="utf-8")
 BETTERRADIO_APP_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "BetterRadio.js").read_text(encoding="utf-8")
+BETTERRUN_APP_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "BetterRun.js").read_text(encoding="utf-8")
 LEGACY_FILES_APP_MARKER = "The Files app is ready for your BetterCS repository."
 VERSIONED_FILES_APP_MARKER = "BETTERCS_FILES_APP_VERSION = 2"
 DEFAULT_APP_SOURCES = {
     "BetterFiles.js": BETTER_FILES_SOURCE,
     "BetterSurf.js": BETTERSURF_APP_SOURCE,
     "BetterRadio.js": BETTERRADIO_APP_SOURCE,
-        "Placeholder.js": '''export default function Placeholder(van) {
+    "BetterRun.js": BETTERRUN_APP_SOURCE,
+    "Placeholder.js": '''export default function Placeholder(van) {
     const {div, h2, p} = van.tags
     return div({class: "bettercs-app bettercs-placeholder"},
         h2("Welcome to BetterCS"),
