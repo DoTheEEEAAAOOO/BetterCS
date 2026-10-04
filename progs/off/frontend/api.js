@@ -36,6 +36,8 @@ export const getTree = () => request("/api/tree")
 
 export const listApps = () => request("/api/apps")
 
+export const fetchBrowserPage = url => request(`/api/browser/page?${new URLSearchParams({url})}`)
+
 export const SwitchApp = async (appName, mount = document.getElementById("app-host")) => {
     if (typeof appName !== "string" || !appName.trim()) {
         throw new TypeError("SwitchApp requires an app name.")

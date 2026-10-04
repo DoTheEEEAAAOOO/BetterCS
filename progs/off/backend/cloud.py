@@ -1,12 +1,16 @@
 import base64
+import http.client
+import ipaddress
 import json
 import re
 import secrets
+import socket
+import ssl
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
+from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 from flask import Blueprint, Response, jsonify, request
@@ -19,6 +23,8 @@ GITHUB_API = "https://api.github.com"
 TREE_FILE_PATH = ".bettercs/tree.json"
 SESSION_COOKIE = "bettercs_session"
 SESSION_MAX_AGE = 30 * 24 * 60 * 60
+MAX_BROWSER_PAGE_BYTES = 2 * 1024 * 1024
+MAX_BROWSER_REDIRECTS = 5
 BETTER_FILES_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "BetterFiles.js").read_text(encoding="utf-8")
 BETTERSURF_APP_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "BetterSurf.js").read_text(encoding="utf-8")
 LEGACY_FILES_APP_MARKER = "The Files app is ready for your BetterCS repository."
@@ -65,6 +71,115 @@ def github_request(token, path, method="GET", payload=None):
         return error.code, details
     except (URLError, TimeoutError):
         return None, {}
+
+
+def validate_browser_url(value):
+    try:
+        parsed = urlsplit(value)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return None, "Only public HTTP and HTTPS websites are supported."
+        if parsed.username or parsed.password:
+            return None, "URLs containing embedded credentials are not allowed."
+
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        if port != (443 if parsed.scheme == "https" else 80):
+            return None, "Only standard HTTP and HTTPS ports are supported."
+
+        host = parsed.hostname.encode("idna").decode("ascii").lower().rstrip(".")
+        if host == "localhost" or host.endswith((".localhost", ".local", ".internal", ".onion")):
+            return None, "Local and private network addresses are not allowed."
+
+        try:
+            addresses = [ipaddress.ip_address(host)]
+        except ValueError:
+            addresses = [
+                ipaddress.ip_address(result[4][0])
+                for result in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+            ]
+        if not addresses or any(not address.is_global for address in addresses):
+            return None, "Local and private network addresses are not allowed."
+
+        path = parsed.path or "/"
+        netloc = f"[{host}]" if ":" in host else host
+        if parsed.port:
+            netloc = f"{netloc}:{port}"
+        normalized_url = urlunsplit((parsed.scheme, netloc, path, parsed.query, ""))
+        return (normalized_url, host, port, addresses[0]), None
+    except (ValueError, UnicodeError, OSError, socket.gaierror):
+        return None, "That website address could not be resolved."
+
+
+def fetch_public_html(url):
+    class PinnedHTTPConnection(http.client.HTTPConnection):
+        def __init__(self, host, port, address):
+            super().__init__(host, port, timeout=10)
+            self.address = address
+
+        def connect(self):
+            self.sock = socket.create_connection((self.address, self.port), self.timeout)
+
+    class PinnedHTTPSConnection(http.client.HTTPSConnection):
+        def __init__(self, host, port, address):
+            super().__init__(host, port, timeout=10, context=ssl.create_default_context())
+            self.address = address
+
+        def connect(self):
+            raw_socket = socket.create_connection((self.address, self.port), self.timeout)
+            self.sock = self._context.wrap_socket(raw_socket, server_hostname=self.host)
+
+    current_url = url
+    for redirect_count in range(MAX_BROWSER_REDIRECTS + 1):
+        validated, error = validate_browser_url(current_url)
+        if error:
+            return None, None, error
+        normalized_url, host, port, address = validated
+        parsed = urlsplit(normalized_url)
+        request_path = urlunsplit(("", "", parsed.path, parsed.query, ""))
+        connection_type = PinnedHTTPSConnection if parsed.scheme == "https" else PinnedHTTPConnection
+        connection = connection_type(host, port, str(address))
+
+        try:
+            connection.request(
+                "GET",
+                request_path,
+                headers={
+                    "Host": parsed.netloc,
+                    "User-Agent": "BetterCS-BetterSurf/1.0",
+                    "Accept": "text/html,application/xhtml+xml",
+                    "Accept-Encoding": "identity",
+                    "Connection": "close",
+                },
+            )
+            response = connection.getresponse()
+            if response.status in (301, 302, 303, 307, 308):
+                location = response.getheader("Location")
+                if not location or redirect_count == MAX_BROWSER_REDIRECTS:
+                    return None, None, "The website redirected too many times."
+                current_url = urljoin(normalized_url, location)
+                continue
+            if response.status != 200:
+                return None, None, f"The website returned HTTP {response.status}."
+
+            content_type = response.getheader("Content-Type", "")
+            if "text/html" not in content_type.lower() and "application/xhtml+xml" not in content_type.lower():
+                return None, None, "The address did not return an HTML page."
+
+            page_bytes = response.read(MAX_BROWSER_PAGE_BYTES + 1)
+            if len(page_bytes) > MAX_BROWSER_PAGE_BYTES:
+                return None, None, "The HTML page is larger than BetterSurf's 2 MB limit."
+            charset_match = re.search(r"charset=([\w.-]+)", content_type, re.IGNORECASE)
+            charset = charset_match.group(1) if charset_match else "utf-8"
+            try:
+                page_html = page_bytes.decode(charset)
+            except (LookupError, UnicodeDecodeError):
+                page_html = page_bytes.decode("utf-8", errors="replace")
+            return page_html, normalized_url, None
+        except (OSError, http.client.HTTPException, ssl.SSLError):
+            return None, None, "BetterSurf could not load that website."
+        finally:
+            connection.close()
+
+    return None, None, "The website redirected too many times."
 
 
 def current_session():
@@ -890,6 +1005,22 @@ def get_session():
         "repo": session["repo"],
         "treeLoaded": session["tree"] is not None,
     })
+
+
+@cloud_api.get("/api/browser/page")
+def get_browser_page():
+    session, error = require_session()
+    if error:
+        return error
+
+    requested_url = request.args.get("url", "").strip()
+    if not requested_url:
+        return jsonify({"ok": False, "message": "Enter a website address."}), 400
+
+    page_html, final_url, fetch_error = fetch_public_html(requested_url)
+    if fetch_error:
+        return jsonify({"ok": False, "message": fetch_error}), 422
+    return jsonify({"ok": True, "url": final_url, "html": page_html})
 
 
 @cloud_api.get("/api/tree")
