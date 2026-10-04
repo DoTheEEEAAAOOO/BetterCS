@@ -1,14 +1,15 @@
 import van from "../../node_modules/vanjs-core/src/van.js"
 
-const {a, button, div, h1, h2, h3, header, main, p, section, nav} = van.tags
+const {a, button, div, h1, h2, h3, header, li, main, nav, p, section, ul} = van.tags
 
 export const Main = () => div(
-    h1("BetterStore"),
-    p("A application store for BetterCS, where you can find and download applications for your BetterCS device."),
-    nav(
-        a({href: "Sdk.html"}, "SDK"),
-        a({href: "Apps.html"}, "Apps"),
-        a({href: "About.html"}, "About"),
+    header(
+        h1("BetterStore"),
+        p("A application store for BetterCS, where you can find and download applications for your BetterCS device."),
+        nav(
+            a({href: "Sdk.html"}, "SDK"),
+            a({href: "Apps.html"}, "Apps"),
+        ),
     ),
     main(
         section(
