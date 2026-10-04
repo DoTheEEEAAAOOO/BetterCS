@@ -12,7 +12,7 @@ import {
 
 export const BETTERCS_FILES_APP_VERSION = 2
 
-export default function Files(van) {
+export default function BetterFiles(van) {
     const {button, div, form, h2, input, label, option, p, pre, select, textarea} = van.tags
     const tree = van.state(null)
     const pendingChanges = van.state(0)
@@ -106,7 +106,7 @@ export default function Files(van) {
     const showContent = () => operation.val === "add-file" || operation.val === "edit-file"
 
     const app = div({class: "files-app", "aria-busy": () => String(busy.val)},
-        h2("Files"),
+        h2("BetterFiles"),
         div({class: "files-toolbar"},
             button({type: "button", onclick: refreshTree, disabled: () => busy.val}, "Refresh tree"),
             button({type: "button", onclick: saveTree, disabled: () => busy.val || pendingChanges.val === 0},

@@ -19,10 +19,13 @@ GITHUB_API = "https://api.github.com"
 TREE_FILE_PATH = ".bettercs/tree.json"
 SESSION_COOKIE = "bettercs_session"
 SESSION_MAX_AGE = 30 * 24 * 60 * 60
-FILES_APP_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "Files.js").read_text(encoding="utf-8")
+BETTER_FILES_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "BetterFiles.js").read_text(encoding="utf-8")
+BETTERSURF_APP_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "BetterSurf.js").read_text(encoding="utf-8")
 LEGACY_FILES_APP_MARKER = "The Files app is ready for your BetterCS repository."
+VERSIONED_FILES_APP_MARKER = "BETTERCS_FILES_APP_VERSION = 2"
 DEFAULT_APP_SOURCES = {
-        "Files.js": FILES_APP_SOURCE,
+    "BetterFiles.js": BETTER_FILES_SOURCE,
+    "BetterSurf.js": BETTERSURF_APP_SOURCE,
         "Placeholder.js": '''export default function Placeholder(van) {
     const {div, h2, p} = van.tags
     return div({class: "bettercs-app bettercs-placeholder"},
@@ -504,6 +507,66 @@ def initialize_empty_repository(session, repository, repo_path, branch, existing
 
 def ensure_default_apps(session, tree):
     apps_directory = get_tree_node(tree, "Apps")
+    if apps_directory and apps_directory.get("type") == "directory":
+        browser_node = apps_directory["children"].get("Browser.js")
+        better_surf_node = apps_directory["children"].get("BetterSurf.js")
+        if browser_node and browser_node.get("type") != "directory" and better_surf_node is None:
+            old_path = "Apps/Browser.js"
+            new_path = "Apps/BetterSurf.js"
+            source, source_error = read_app_source(session, tree, "Browser")
+            if not source_error:
+                previous_pending = session["pending"].pop(old_path, None)
+                del apps_directory["children"]["Browser.js"]
+                renamed_node = {**browser_node, "path": new_path}
+                apps_directory["children"]["BetterSurf.js"] = renamed_node
+                queue_file_deletion(session, old_path)
+                session["pending"][new_path] = previous_pending or {
+                    "content": source,
+                    "mode": browser_node.get("mode", "100644"),
+                }
+
+        files_node = apps_directory["children"].get("Files.js")
+        if files_node and files_node.get("type") != "directory":
+            old_path = "Apps/Files.js"
+            new_path = "Apps/BetterFiles.js"
+            better_files_node = apps_directory["children"].get("BetterFiles.js")
+            source, source_error = read_app_source(session, tree, "Files")
+            if not source_error:
+                is_shipped_files_app = (
+                    LEGACY_FILES_APP_MARKER in source
+                    or VERSIONED_FILES_APP_MARKER in source
+                )
+                if better_files_node is None:
+                    previous_pending = session["pending"].pop(old_path, None)
+                    del apps_directory["children"]["Files.js"]
+                    renamed_node = {**files_node, "path": new_path}
+                    apps_directory["children"]["BetterFiles.js"] = renamed_node
+                    queue_file_deletion(session, old_path)
+
+                    if is_shipped_files_app:
+                        session["pending"][new_path] = {
+                            "content": BETTER_FILES_SOURCE,
+                            "mode": files_node.get("mode", "100644"),
+                        }
+                        renamed_node["sha"] = files_node.get("sha")
+                        renamed_node["size"] = len(BETTER_FILES_SOURCE.encode("utf-8"))
+                    elif previous_pending is not None:
+                        session["pending"][new_path] = previous_pending
+                    elif files_node.get("sha"):
+                        session["pending"][new_path] = {
+                            "sha": files_node["sha"],
+                            "mode": files_node.get("mode", "100644"),
+                            "type": files_node.get("type", "blob"),
+                        }
+                    else:
+                        session["pending"][new_path] = {
+                            "content": source,
+                            "mode": files_node.get("mode", "100644"),
+                        }
+                elif is_shipped_files_app:
+                    del apps_directory["children"]["Files.js"]
+                    queue_file_deletion(session, old_path)
+
     existing_names = set()
     if apps_directory and apps_directory.get("type") == "directory":
         existing_names = {
@@ -517,21 +580,21 @@ def ensure_default_apps(session, tree):
         if name not in existing_names and f"Apps/{name}" not in session["pending"]
     }
     if not missing_sources:
-        files_node = get_tree_node(tree, "Apps/Files.js")
-        files_path = "Apps/Files.js"
+        files_node = get_tree_node(tree, "Apps/BetterFiles.js")
+        files_path = "Apps/BetterFiles.js"
         if (
             files_node
             and files_node.get("type") != "directory"
             and files_node.get("sha")
             and files_path not in session["pending"]
         ):
-            current_source, source_error = read_app_source(session, tree, "Files")
+            current_source, source_error = read_app_source(session, tree, "BetterFiles")
             if not source_error and LEGACY_FILES_APP_MARKER in current_source:
                 session["pending"][files_path] = {
-                    "content": FILES_APP_SOURCE,
+                    "content": BETTER_FILES_SOURCE,
                     "mode": files_node.get("mode", "100644"),
                 }
-                files_node["size"] = len(FILES_APP_SOURCE.encode("utf-8"))
+                files_node["size"] = len(BETTER_FILES_SOURCE.encode("utf-8"))
         return tree, None
 
     if session["pending"]:

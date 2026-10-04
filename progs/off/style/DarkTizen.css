@@ -503,6 +503,74 @@ textarea {
     tab-size: 2;
 }
 
+.better-surf-app {
+    display: grid;
+    width: 100%;
+    gap: 12px;
+}
+
+.better-surf-app h2 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.better-surf-address {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 4px 10px;
+}
+
+.better-surf-address label {
+    grid-column: 1 / -1;
+    color: #d8e5e9;
+    font-size: 15px;
+}
+
+.better-surf-address input {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    min-height: 46px;
+    margin: 0;
+}
+
+.better-surf-address button {
+    min-width: 84px;
+    min-height: 46px;
+    margin: 0;
+    padding: 0 18px;
+    font-size: 16px;
+}
+
+.better-surf-status {
+    min-height: 1.4em;
+    margin: 0;
+    font-size: 14px;
+}
+
+.better-surf-page {
+    display: block;
+    width: 100%;
+    height: min(68vh, 760px);
+    min-height: 320px;
+    border: 1px solid rgba(167, 191, 199, 0.25);
+    background: #ffffff;
+}
+
+.better-surf-empty {
+    min-height: 320px;
+    border: 1px solid rgba(167, 191, 199, 0.16);
+    background: rgba(5, 10, 13, 0.35);
+}
+
+@media (max-width: 600px) {
+    .better-surf-page,
+    .better-surf-empty {
+        min-height: 240px;
+    }
+}
+
 .bottom-bar-component {
     position: relative;
     z-index: 20;
