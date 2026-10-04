@@ -27,11 +27,13 @@ MAX_BROWSER_PAGE_BYTES = 2 * 1024 * 1024
 MAX_BROWSER_REDIRECTS = 5
 BETTER_FILES_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "BetterFiles.js").read_text(encoding="utf-8")
 BETTERSURF_APP_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "BetterSurf.js").read_text(encoding="utf-8")
+BETTERRADIO_APP_SOURCE = (Path(__file__).resolve().parent / "default_apps" / "BetterRadio.js").read_text(encoding="utf-8")
 LEGACY_FILES_APP_MARKER = "The Files app is ready for your BetterCS repository."
 VERSIONED_FILES_APP_MARKER = "BETTERCS_FILES_APP_VERSION = 2"
 DEFAULT_APP_SOURCES = {
     "BetterFiles.js": BETTER_FILES_SOURCE,
     "BetterSurf.js": BETTERSURF_APP_SOURCE,
+    "BetterRadio.js": BETTERRADIO_APP_SOURCE,
         "Placeholder.js": '''export default function Placeholder(van) {
     const {div, h2, p} = van.tags
     return div({class: "bettercs-app bettercs-placeholder"},
@@ -71,6 +73,48 @@ def github_request(token, path, method="GET", payload=None):
         return error.code, details
     except (URLError, TimeoutError):
         return None, {}
+
+
+def fetch_radio_stations(country_code):
+    url = (
+        "https://de1.api.radio-browser.info/json/stations/bycountrycodeexact/"
+        f"{quote(country_code, safe='')}?hidebroken=true&limit=100&order=clickcount&reverse=true"
+    )
+    radio_request = Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "BetterCS-BetterRadio/1.0",
+        },
+    )
+    try:
+        with urlopen(radio_request, timeout=12) as response:
+            raw = response.read(2 * 1024 * 1024 + 1)
+            if len(raw) > 2 * 1024 * 1024:
+                return None, "The station directory response was too large."
+            stations = json.loads(raw)
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, OSError):
+        return None, "Could not load stations right now. Check your connection and try again."
+
+    if not isinstance(stations, list):
+        return None, "The station directory returned an unexpected response."
+
+    results = []
+    for station in stations:
+        stream_url = station.get("url_resolved") or station.get("url") or ""
+        parsed_stream = urlsplit(stream_url)
+        if parsed_stream.scheme not in ("http", "https") or not parsed_stream.hostname:
+            continue
+        results.append({
+            "id": str(station.get("stationuuid", "")),
+            "name": str(station.get("name", "Unnamed station"))[:160],
+            "country": str(station.get("country", ""))[:80],
+            "state": str(station.get("state", ""))[:80],
+            "codec": str(station.get("codec", ""))[:24],
+            "bitrate": station.get("bitrate") if isinstance(station.get("bitrate"), int) else 0,
+            "streamUrl": stream_url,
+        })
+    return results, None
 
 
 def validate_browser_url(value):
@@ -1021,6 +1065,23 @@ def get_browser_page():
     if fetch_error:
         return jsonify({"ok": False, "message": fetch_error}), 422
     return jsonify({"ok": True, "url": final_url, "html": page_html})
+
+
+@cloud_api.get("/api/radio/stations")
+def get_radio_stations():
+    session, error = require_session()
+    if error:
+        return error
+
+    country_code = request.args.get("country", "").strip().upper()
+    if not re.fullmatch(r"[A-Z]{2}", country_code):
+        return jsonify({"ok": False, "message": "Enter a valid two-letter country code."}), 400
+
+    stations, fetch_error = fetch_radio_stations(country_code)
+    if fetch_error:
+        return jsonify({"ok": False, "message": fetch_error}), 502
+    country_name = next((station["country"] for station in stations if station["country"]), country_code)
+    return jsonify({"ok": True, "country": country_name, "stations": stations})
 
 
 @cloud_api.get("/api/tree")

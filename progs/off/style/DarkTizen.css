@@ -564,10 +564,116 @@ textarea {
     background: rgba(5, 10, 13, 0.35);
 }
 
+.better-radio-app {
+    display: grid;
+    width: 100%;
+    gap: 14px;
+}
+
+.better-radio-app h2 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.better-radio-location {
+    display: grid;
+    grid-template-columns: minmax(0, 220px) auto;
+    align-items: end;
+    gap: 4px 10px;
+}
+
+.better-radio-location label {
+    grid-column: 1 / -1;
+    color: #d8e5e9;
+    font-size: 15px;
+}
+
+.better-radio-location input {
+    width: 100%;
+    min-height: 44px;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.better-radio-location button {
+    min-width: 124px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 14px;
+    font-size: 15px;
+}
+
+.better-radio-status {
+    min-height: 1.4em;
+    margin: 0;
+    font-size: 14px;
+}
+
+.better-radio-player {
+    width: 100%;
+    min-height: 42px;
+}
+
+.better-radio-stations {
+    max-height: min(52vh, 600px);
+    overflow: auto;
+}
+
+.better-radio-station-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+}
+
+.better-radio-station {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 68px;
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 3px;
+    text-align: left;
+}
+
+.better-radio-station[aria-current="true"] {
+    border-color: #54d9e9;
+    background: linear-gradient(180deg, rgba(57, 92, 105, 0.98), rgba(22, 50, 60, 0.98));
+    box-shadow: 0 0 18px rgba(0, 194, 255, 0.18);
+}
+
+.better-radio-station-name,
+.better-radio-station-meta {
+    overflow: hidden;
+    margin: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.better-radio-station-name {
+    color: #f3f8fa;
+    font-size: 15px;
+}
+
+.better-radio-station-meta {
+    margin-top: 3px;
+    color: #b9c8ce;
+    font-size: 12px;
+    font-weight: 400;
+}
+
 @media (max-width: 600px) {
     .better-surf-page,
     .better-surf-empty {
         min-height: 240px;
+    }
+
+    .better-radio-location {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .better-radio-station-list {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 

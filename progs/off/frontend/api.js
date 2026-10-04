@@ -36,6 +36,8 @@ export const getTree = () => request("/api/tree")
 
 export const listApps = () => request("/api/apps")
 
+export const getRadioStations = country => request(`/api/radio/stations?country=${encodeURIComponent(country)}`)
+
 export const fetchBrowserPage = url => request(`/api/browser/page?${new URLSearchParams({url})}`)
 
 export const SwitchApp = async (appName, mount = document.getElementById("app-host")) => {
