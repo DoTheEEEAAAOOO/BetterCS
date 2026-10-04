@@ -23,7 +23,7 @@ export const Main = () => div(
                 li("Flask"),
                 li("Python"),
                 li("Samsung"),
-                li("GitHub Codespaces")
+                li("GitHub Codespaces"),
             ),
         ),
     ),
