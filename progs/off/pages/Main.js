@@ -1,6 +1,7 @@
 import van from "../lib/van.js"
 import {BottomBar} from "../components/BottomBar.js"
 import {listApps, logout, SwitchApp} from "../frontend/api.js"
+import {toggleMusic} from "./Welcome.js"
 
 const {div, main, p} = van.tags
 const logoutStatus = van.state("")
@@ -45,7 +46,7 @@ export const Main = async () => {
                 {
                     id: "system",
                     label: "System",
-                    items: [{label: "Reload BetterCS", onSelect: reloadApp}],
+                    items: [{label: "Reload BetterCS", onSelect: reloadApp}, {label: "Mute/unmute audio", onSelect: toggleMusic}],
                 },
                 {
                     id: "account",

@@ -24,7 +24,7 @@ audio.play().then(() => {
     musicEnabled.val = !audio.muted
 }).catch(() => {})
 
-const toggleMusic = async () => {
+export const toggleMusic = async () => {
     musicStatus.val = ""
 
     if (audio.paused) {
@@ -164,7 +164,7 @@ const resumeSavedSession = async () => {
             openStepTwo()
         }
     } catch {
-        // No saved session; keep the sign-in screen ready.
+
     }
 }
 
