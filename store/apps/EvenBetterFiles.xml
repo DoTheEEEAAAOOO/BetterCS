@@ -7,7 +7,71 @@
 <Code>
     import {addFile, getTree, pushTree, removeFile} from "../frontend/api.js"
 
+    const listStyles = `
+.files-list {
+    display: grid;
+    width: 100%;
+    max-width: 760px;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.files-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    border: 1px solid rgba(127, 127, 127, 0.35);
+    border-radius: 3px;
+}
+
+.files-list-name {
+    overflow: hidden;
+    font: 14px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.files-list-remove {
+    flex: 0 0 auto;
+    min-width: 0;
+    min-height: 34px;
+    margin: 0;
+    padding: 0 12px;
+    border-color: rgba(255, 138, 128, 0.35);
+    color: #ffd9d4;
+    background: rgba(70, 32, 28, 0.6);
+    font-size: 13px;
+}
+
+.files-list-remove:hover,
+.files-list-remove:focus-visible {
+    border-color: rgba(255, 122, 107, 0.7);
+    color: #ffffff;
+}
+
+.files-list-empty {
+    padding: 16px 12px;
+    border: 1px solid rgba(127, 127, 127, 0.3);
+    border-radius: 3px;
+    font-size: 14px;
+    text-align: center;
+}
+`
+
+    const injectStyles = () => {
+        if (document.getElementById("evenbetterfiles-styles")) return
+        const style = document.createElement("style")
+        style.id = "evenbetterfiles-styles"
+        style.textContent = listStyles
+        document.head.appendChild(style)
+    }
+
     export default function EvenBetterFiles(van) {
+        injectStyles()
         const {button, div, form, h2, input, label, li, p, span, textarea, ul} = van.tags
         const tree = van.state(null)
         const pendingChanges = van.state(0)

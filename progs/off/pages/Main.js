@@ -8,14 +8,10 @@ let currentTheme = 0
 const {div, main, p} = van.tags
 const logoutStatus = van.state("")
 const toggleTheme = () => {
-    if (currentTheme !== 1) {
-        currentTheme = 0
-    } else {
-        currentTheme = 1
-    }
+    currentTheme = currentTheme === 1 ? 0 : 1
 
     const link = document.getElementById('themeStylesheet');
-    link.href = (link.getAttribute('href') === 'LightTizen.css') ? 'DarkTizen.css' : 'LightTizen.css';
+    link.setAttribute('href', currentTheme === 1 ? '/style/LightTizen.css' : '/style/DarkTizen.css');
 }
 
 const reloadApp = () => window.location.reload()

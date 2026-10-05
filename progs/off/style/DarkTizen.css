@@ -488,62 +488,6 @@ textarea {
     font-size: 14px;
 }
 
-.files-list {
-    display: grid;
-    width: 100%;
-    max-width: 760px;
-    gap: 6px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.files-list-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 8px 12px;
-    border: 1px solid rgba(167, 191, 199, 0.18);
-    border-radius: 3px;
-    background: rgba(5, 10, 13, 0.5);
-}
-
-.files-list-name {
-    overflow: hidden;
-    color: #d7e9ee;
-    font: 14px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.files-list-remove {
-    flex: 0 0 auto;
-    min-width: 0;
-    min-height: 34px;
-    margin: 0;
-    padding: 0 12px;
-    border-color: rgba(255, 138, 128, 0.35);
-    color: #ffd9d4;
-    background: rgba(70, 32, 28, 0.6);
-    font-size: 13px;
-}
-
-.files-list-remove:hover,
-.files-list-remove:focus-visible {
-    border-color: rgba(255, 122, 107, 0.7);
-    color: #ffffff;
-}
-
-.files-list-empty {
-    padding: 16px 12px;
-    border: 1px solid rgba(167, 191, 199, 0.14);
-    border-radius: 3px;
-    color: #8fa4ad;
-    font-size: 14px;
-    text-align: center;
-}
-
 .files-tree-json {
     width: 100%;
     max-height: min(48vh, 560px);
