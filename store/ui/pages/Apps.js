@@ -7,6 +7,7 @@ const loading = van.state(true)
 const loadError = van.state("")
 const selected = van.state(null)
 const installing = van.state(false)
+const uninstalling = van.state(false)
 const installStatus = van.state("")
 const installForm = van.state(false)
 const installUsername = van.state("")
@@ -32,7 +33,7 @@ const loadApps = async () => {
 }
 
 const installApp = async (app) => {
-    if (installing.val) return
+    if (installing.val || uninstalling.val) return
     installing.val = true
     installStatus.val = ""
     try {
@@ -63,6 +64,41 @@ const installApp = async (app) => {
         installStatus.val = "Could not contact the BetterStore server."
     } finally {
         installing.val = false
+    }
+}
+
+const uninstallApp = async (app) => {
+    if (installing.val || uninstalling.val) return
+    uninstalling.val = true
+    installStatus.val = ""
+    try {
+        const response = await fetch("/api/uninstall", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                file: app.file,
+                username: installUsername.val,
+                repo: installRepo.val,
+                token: installToken.val,
+            }),
+        })
+        let data = {}
+        try {
+            data = await response.json()
+        } catch {
+            data = {}
+        }
+        if (!response.ok || !data.ok) {
+            installStatus.val = data.message || `Could not uninstall ${app.name}.`
+            return
+        }
+        installStatus.val = data.message || `${app.name} was uninstalled.`
+        installForm.val = false
+        installToken.val = ""
+    } catch {
+        installStatus.val = "Could not contact the BetterStore server."
+    } finally {
+        uninstalling.val = false
     }
 }
 
@@ -119,12 +155,19 @@ const InstallForm = (app) => div({class: "store-install-form"},
         button({
             class: "store-install",
             type: "button",
-            disabled: installing,
+            disabled: () => installing.val || uninstalling.val,
             onclick: () => installApp(app),
         }, () => installing.val ? "Installing..." : "Install"),
         button({
+            class: "store-uninstall",
+            type: "button",
+            disabled: () => installing.val || uninstalling.val,
+            onclick: () => uninstallApp(app),
+        }, () => uninstalling.val ? "Uninstalling..." : "Uninstall"),
+        button({
             class: "store-cancel",
             type: "button",
+            disabled: () => installing.val || uninstalling.val,
             onclick: () => {
                 installForm.val = false
                 installStatus.val = ""

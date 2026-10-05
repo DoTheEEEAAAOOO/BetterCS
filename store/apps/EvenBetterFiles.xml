@@ -5,6 +5,7 @@
     <Author>atoz</Author>
 </Metadata>
 <Code>
+    import van from "../lib/van.js"
     const {a, button, div, h1, h2, h3, header, li, main, nav, p, section, ul} = van.tags
     
     const Main = () => h1("EvenBetterFiles")

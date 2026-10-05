@@ -80,7 +80,7 @@ const normalizeRepository = (value) => String(value || "")
     .replace(/\.git$/, "")
     .replace(/^\/+|\/+$/g, "");
 
-const installAppOnGitHub = async (app, credentials) => {
+const resolveInstallTarget = async (app, credentials) => {
     const username = String(credentials.username || "").trim();
     const repository = normalizeRepository(credentials.repo);
     const token = String(credentials.token || "").trim();
@@ -120,7 +120,12 @@ const installAppOnGitHub = async (app, credentials) => {
         throw new InstallError(400, "The repository has no default branch yet.");
     }
 
-    const targetPath = `Apps/${app.name}.js`;
+    return {repository, branch, repoPath, token, targetPath: `Apps/${app.name}.js`};
+};
+
+const installAppOnGitHub = async (app, credentials) => {
+    const {repository, branch, repoPath, token, targetPath} = await resolveInstallTarget(app, credentials);
+
     const refPath = `${repoPath}/git/ref/heads/${encodeURIComponent(branch)}`;
     const refsPath = `${repoPath}/git/refs/heads/${encodeURIComponent(branch)}`;
     const contentsResult = await githubRequest(
@@ -179,6 +184,37 @@ const installAppOnGitHub = async (app, credentials) => {
     return {repository, branch, commit: newCommit.data.sha};
 };
 
+const uninstallAppOnGitHub = async (app, credentials) => {
+    const {repository, branch, repoPath, token, targetPath} = await resolveInstallTarget(app, credentials);
+
+    const contentsResult = await githubRequest(
+        token,
+        `${repoPath}/contents/${encodeURIComponent(targetPath)}?ref=${encodeURIComponent(branch)}`,
+    );
+    if (contentsResult.status === 404) {
+        throw new InstallError(404, `${app.name} is not installed in that repository.`);
+    }
+    if (contentsResult.status !== 200) {
+        throw new InstallError(502, "Could not read the app file from the repository.");
+    }
+    const fileSha = contentsResult.data.sha;
+    if (!fileSha) {
+        throw new InstallError(502, "The app file in the repository has no commit hash.");
+    }
+
+    const deleteResult = await githubRequest(
+        token,
+        `${repoPath}/contents/${encodeURIComponent(targetPath)}`,
+        "DELETE",
+        {message: `Remove ${app.name} via BetterStore`, sha: fileSha, branch},
+    );
+    if (deleteResult.status !== 200) {
+        throw new InstallError(502, "GitHub could not remove the app file.");
+    }
+
+    return {repository, branch, commit: deleteResult.data?.commit?.sha};
+};
+
 const listApps = (res) => {
     fs.readdir(appsDir, (err, files) => {
         if (err) {
@@ -197,7 +233,7 @@ const listApps = (res) => {
     });
 };
 
-const installApp = (req, res) => {
+const handleAppRequest = (req, res, action) => {
     let body = "";
     req.on("data", chunk => {
         body += chunk;
@@ -226,16 +262,10 @@ const installApp = (req, res) => {
                 return;
             }
 
-            const result = await installAppOnGitHub(app, payload);
-            sendJson(res, 200, {
-                ok: true,
-                message: `Installed ${app.name} into ${result.repository}. Sign out and back in on BetterCS to see it in your app list.`,
-                repo: result.repository,
-                branch: result.branch,
-                commit: result.commit,
-            });
+            const result = await action(app, payload);
+            sendJson(res, 200, result);
         } catch (error) {
-            if (error.code === "ENOENT") {
+            if (error && error.code === "ENOENT") {
                 sendJson(res, 404, {ok: false, message: "That app does not exist."});
                 return;
             }
@@ -243,10 +273,32 @@ const installApp = (req, res) => {
                 sendJson(res, error.status, {ok: false, message: error.message});
                 return;
             }
-            sendJson(res, 500, {ok: false, message: "The install failed unexpectedly."});
+            sendJson(res, 500, {ok: false, message: "The request failed unexpectedly."});
         }
     });
 };
+
+const installApp = (req, res) => handleAppRequest(req, res, async (app, payload) => {
+    const result = await installAppOnGitHub(app, payload);
+    return {
+        ok: true,
+        message: `Installed ${app.name} into ${result.repository}. Sign out and back in on BetterCS to see it in your app list.`,
+        repo: result.repository,
+        branch: result.branch,
+        commit: result.commit,
+    };
+});
+
+const uninstallApp = (req, res) => handleAppRequest(req, res, async (app, payload) => {
+    const result = await uninstallAppOnGitHub(app, payload);
+    return {
+        ok: true,
+        message: `Removed ${app.name} from ${result.repository}. Sign out and back in on BetterCS to see it disappear from your app list.`,
+        repo: result.repository,
+        branch: result.branch,
+        commit: result.commit,
+    };
+});
 
 const safePath = (base, requestPath) => {
     const file = path.join(base, requestPath);
@@ -263,6 +315,11 @@ const server = http.createServer((req, res) => {
 
     if (req.method === "POST" && requestPath === "/api/install") {
         installApp(req, res);
+        return;
+    }
+
+    if (req.method === "POST" && requestPath === "/api/uninstall") {
+        uninstallApp(req, res);
         return;
     }
 
