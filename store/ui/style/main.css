@@ -1813,3 +1813,226 @@ section:nth-of-type(4) {
         margin-bottom: 45px;
     }
 }
+
+.store-app-grid {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 22px;
+}
+
+.store-app-tile {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    aspect-ratio: 1;
+    align-content: center;
+    justify-items: center;
+    gap: 12px;
+    margin: 0;
+    padding: 22px;
+    border: 1px solid rgba(167, 191, 199, 0.2);
+    border-radius: 4px;
+    color: #eaf3f7;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(0, 205, 255, 0.08), transparent 55%),
+        linear-gradient(145deg, rgba(28,38,44,0.98), rgba(12,17,21,0.98));
+    font-size: 20px;
+    cursor: pointer;
+    transition:
+        transform 0.18s ease,
+        border-color 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.store-app-tile:hover,
+.store-app-tile:focus-visible {
+    transform: translateY(-4px);
+    border-color: rgba(67, 218, 255, 0.72);
+    box-shadow: 0 0 28px rgba(0, 199, 255, 0.2);
+    outline: none;
+}
+
+.store-app-tile-icon {
+    display: grid;
+    width: 72px;
+    height: 72px;
+    flex: 0 0 72px;
+    place-items: center;
+    border: 1px solid rgba(235, 245, 247, 0.22);
+    border-radius: 4px;
+    color: #eaf9fb;
+    background: linear-gradient(145deg, rgba(70, 111, 120, 0.85), rgba(27, 44, 49, 0.95));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 4px 9px rgba(0, 0, 0, 0.28);
+    font-size: 34px;
+    font-weight: 600;
+}
+
+.store-app-tile-name {
+    display: block;
+    overflow: hidden;
+    max-width: 100%;
+    color: inherit;
+    font-size: 18px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.store-app-detail {
+    width: 100%;
+    max-width: 720px;
+    animation: tizen-panel-reveal 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.store-back {
+    min-width: 0;
+    min-height: 46px;
+    margin: 0 0 26px;
+    padding: 0 18px;
+    font-size: 16px;
+}
+
+.store-app-meta {
+    display: grid;
+    width: 100%;
+    gap: 14px;
+    margin: 0 0 30px;
+}
+
+.store-app-meta-row {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 6px 18px;
+    margin: 0;
+    padding: 14px 18px;
+    border: 1px solid rgba(167, 191, 199, 0.18);
+    border-radius: 3px;
+    background: rgba(5, 10, 13, 0.5);
+}
+
+.store-app-meta-row dt {
+    color: #8fa4ad;
+    font-size: 15px;
+}
+
+.store-app-meta-row dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: #eaf3f7;
+    font-size: 17px;
+}
+
+.store-install {
+    justify-self: start;
+}
+
+.store-install-form {
+    display: grid;
+    width: 100%;
+    max-width: 560px;
+    gap: 6px;
+    margin: 0 0 10px;
+    padding: 24px;
+    border: 1px solid rgba(167, 191, 199, 0.2);
+    border-radius: 4px;
+    background: rgba(5, 10, 13, 0.55);
+    animation: tizen-panel-reveal 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.store-install-form > p {
+    margin: 0 0 14px;
+    font-size: 15px;
+}
+
+.store-field {
+    display: grid;
+    gap: 6px;
+    margin: 0 0 12px;
+}
+
+.store-field > span {
+    color: #d8e5e9;
+    font-size: 15px;
+}
+
+.store-field input {
+    width: 100%;
+    max-width: none;
+    min-height: 50px;
+    margin: 0;
+}
+
+.store-install-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.store-install-actions .store-install,
+.store-install-actions .store-cancel {
+    min-width: 130px;
+    min-height: 50px;
+    margin: 0;
+    padding: 0 20px;
+    font-size: 17px;
+}
+
+.store-cancel {
+    border-color: rgba(167, 191, 199, 0.25);
+    color: #b9c8ce;
+    background: transparent;
+}
+
+.store-cancel:hover,
+.store-cancel:focus-visible {
+    border-color: rgba(73, 218, 255, 0.5);
+    color: #ffffff;
+    box-shadow: none;
+}
+
+.store-status {
+    min-height: 1.4em;
+    margin: 14px 0 0;
+    color: #9fdcef;
+    font-size: 15px;
+}
+
+.store-loading,
+.store-error,
+.store-empty {
+    display: grid;
+    min-height: 200px;
+    margin: 0;
+    place-items: center;
+    color: #b9c8ce;
+    font-size: 18px;
+}
+
+.store-error {
+    color: #ffb4a8;
+}
+
+@media (max-width: 600px) {
+    .store-app-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 14px;
+    }
+
+    .store-app-tile {
+        padding: 16px;
+    }
+
+    .store-app-tile-icon {
+        width: 56px;
+        height: 56px;
+        flex-basis: 56px;
+        font-size: 26px;
+    }
+
+    .store-app-meta-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+}

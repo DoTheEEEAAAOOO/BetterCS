@@ -1,0 +1,11 @@
+<Metadata>
+    <Name>EvenBetterFiles</Name>
+    <Description>A better file manager for BetterCS</Description>
+    <Version>1.0.0</Version>
+    <Author>atoz</Author>
+</Metadata>
+<Code>
+    const {a, button, div, h1, h2, h3, header, li, main, nav, p, section, ul} = van.tags
+    
+    const Main = () => h1("EvenBetterFiles")
+</Code>
