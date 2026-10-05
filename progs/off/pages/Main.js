@@ -3,8 +3,20 @@ import {BottomBar} from "../components/BottomBar.js"
 import {listApps, logout, SwitchApp} from "../frontend/api.js"
 import {toggleMusic} from "./Welcome.js"
 
+let currentTheme = 0
+
 const {div, main, p} = van.tags
 const logoutStatus = van.state("")
+const toggleTheme = () => {
+    if (currentTheme !== 1) {
+        currentTheme = 0
+    } else {
+        currentTheme = 1
+    }
+
+    const link = document.getElementById('themeStylesheet');
+    link.href = (link.getAttribute('href') === 'LightTizen.css') ? 'DarkTizen.css' : 'LightTizen.css';
+}
 
 const reloadApp = () => window.location.reload()
 const logOut = async () => {
@@ -53,6 +65,10 @@ export const Main = async () => {
                     label: "Account",
                     items: [{label: "Log out", onSelect: logOut}],
                 },
+                {
+                    id: "looks",
+                    label: "Looks",
+                    items: [{label: "Change theme", onSelect: () => toggleTheme()}]
             ],
             ListBar: apps.map(app => ({
                 id: `app-${app.name}`,
