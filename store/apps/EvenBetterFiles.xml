@@ -1,12 +1,152 @@
 <Metadata>
     <Name>EvenBetterFiles</Name>
-    <Description>A better file manager for BetterCS</Description>
-    <Version>1.0.0</Version>
+    <Description>A simpler file manager for BetterCS</Description>
+    <Version>1.1.0</Version>
     <Author>atoz</Author>
 </Metadata>
 <Code>
-    import van from "../lib/van.js"
-    const {a, button, div, h1, h2, h3, header, li, main, nav, p, section, ul} = van.tags
-    
-    const Main = () => h1("EvenBetterFiles")
+    import {addFile, getTree, pushTree, removeFile} from "../frontend/api.js"
+
+    export default function EvenBetterFiles(van) {
+        const {button, div, form, h2, input, label, li, p, span, textarea, ul} = van.tags
+        const tree = van.state(null)
+        const pendingChanges = van.state(0)
+        const busy = van.state(false)
+        const status = van.state("Loading files...")
+
+        const refresh = async () => {
+            busy.val = true
+            status.val = "Loading files..."
+            try {
+                const result = await getTree()
+                tree.val = result.tree
+                pendingChanges.val = result.pendingChanges ?? 0
+                status.val = `Loaded ${result.repo}.`
+            } catch (error) {
+                status.val = error.message
+            } finally {
+                busy.val = false
+            }
+        }
+
+        const save = async () => {
+            if (busy.val || pendingChanges.val === 0) return
+            busy.val = true
+            status.val = "Saving to GitHub..."
+            try {
+                const result = await pushTree("Update files from EvenBetterFiles")
+                tree.val = result.tree
+                pendingChanges.val = result.pendingChanges ?? 0
+                status.val = result.message
+            } catch (error) {
+                status.val = error.message
+            } finally {
+                busy.val = false
+            }
+        }
+
+        const addFileFromForm = async event => {
+            event.preventDefault()
+            if (busy.val) return
+            const formData = new FormData(event.currentTarget)
+            const path = formData.get("path")?.toString().trim() ?? ""
+            const content = formData.get("content")?.toString() ?? ""
+            if (!path) return
+            busy.val = true
+            status.val = "Adding file..."
+            try {
+                const result = await addFile(path, content)
+                tree.val = result.tree
+                pendingChanges.val = result.pendingChanges ?? 0
+                status.val = `Added ${path}. Save to keep it.`
+                event.currentTarget.reset()
+            } catch (error) {
+                status.val = error.message
+            } finally {
+                busy.val = false
+            }
+        }
+
+        const removePath = async targetPath => {
+            if (busy.val) return
+            busy.val = true
+            status.val = `Removing ${targetPath}...`
+            try {
+                const result = await removeFile(targetPath)
+                tree.val = result.tree
+                pendingChanges.val = result.pendingChanges ?? 0
+                status.val = `Removed ${targetPath}. Save to keep it.`
+            } catch (error) {
+                status.val = error.message
+            } finally {
+                busy.val = false
+            }
+        }
+
+        const collectFiles = (node, prefix = "") => {
+            const files = []
+            for (const [name, child] of Object.entries(node.children ?? {})) {
+                const childPath = prefix ? `${prefix}/${name}` : name
+                if (child.type === "directory") {
+                    files.push(...collectFiles(child, childPath))
+                } else {
+                    files.push({path: childPath, size: child.size ?? 0})
+                }
+            }
+            return files
+        }
+
+        const fileList = () => {
+            const files = tree.val ? collectFiles(tree.val.root) : []
+            return ul({class: "files-list"},
+                files.length
+                    ? files.map(file => li({class: "files-list-item"},
+                        span({class: "files-list-name"}, file.path),
+                        button({
+                            type: "button",
+                            class: "files-list-remove",
+                            onclick: () => removePath(file.path),
+                            "aria-label": `Remove ${file.path}`,
+                        }, "Remove"),
+                    ))
+                    : li({class: "files-list-empty"}, tree.val ? "No files yet." : "Loading files..."),
+            )
+        }
+
+        const app = div({class: "files-app", "aria-busy": () => String(busy.val)},
+            h2("EvenBetterFiles"),
+            div({class: "files-toolbar"},
+                button({type: "button", onclick: refresh, disabled: () => busy.val}, "Refresh"),
+                button({
+                    type: "button",
+                    onclick: save,
+                    disabled: () => busy.val || pendingChanges.val === 0,
+                }, () => `Save (${pendingChanges.val})`),
+            ),
+            form({class: "files-operation-form", onsubmit: addFileFromForm},
+                label({for: "evenbetterfiles-path"}, "File path"),
+                input({
+                    id: "evenbetterfiles-path",
+                    name: "path",
+                    type: "text",
+                    placeholder: "folder/file.txt",
+                    autocomplete: "off",
+                    required: true,
+                }),
+                label({for: "evenbetterfiles-content"}, "Contents"),
+                textarea({
+                    id: "evenbetterfiles-content",
+                    name: "content",
+                    placeholder: "Enter UTF-8 text",
+                    required: true,
+                }),
+                button({type: "submit", disabled: () => busy.val}, "Add file"),
+            ),
+            () => fileList(),
+            p({class: "files-status", role: "status", "aria-live": "polite"}, () => status.val),
+        )
+
+        refresh()
+        return app
+    }
 </Code>
