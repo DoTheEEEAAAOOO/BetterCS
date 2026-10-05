@@ -69,6 +69,7 @@ export const Main = async () => {
                     id: "looks",
                     label: "Looks",
                     items: [{label: "Change theme", onSelect: () => toggleTheme()}]
+                }
             ],
             ListBar: apps.map(app => ({
                 id: `app-${app.name}`,
