@@ -3,15 +3,32 @@ import {BottomBar} from "../components/BottomBar.js"
 import {listApps, logout, SwitchApp} from "../frontend/api.js"
 import {toggleMusic} from "./Welcome.js"
 
-let currentTheme = 0
-
 const {div, main, p} = van.tags
 const logoutStatus = van.state("")
-const toggleTheme = () => {
-    currentTheme = currentTheme === 1 ? 0 : 1
+const themes = [
+    {id: 'dark',    name: 'Dark',    href: '/style/DarkTizen.css'},
+    {id: 'light',   name: 'Light',   href: '/style/LightTizen.css'},
+    {id: 'darkb',   name: 'Dark+',   href: '/style/DarkBetter.css'},
+    {id: 'lightb',  name: 'Light+',  href: '/style/LightBetter.css'}
+]
 
-    const link = document.getElementById('themeStylesheet');
-    link.setAttribute('href', currentTheme === 1 ? '/style/LightTizen.css' : '/style/DarkTizen.css');
+let currentTheme = 0
+
+const toggleTheme = (direction = 1) => {
+    currentTheme = (currentTheme + direction + themes.length) % themes.length
+    const link = document.getElementById('themeStylesheet')
+    link.setAttribute('href', themes[currentTheme].href)
+    localStorage.setItem('bettercs-theme', themes[currentTheme].id)
+}
+
+const initTheme = () => {
+    const saved = localStorage.getItem('bettercs-theme')
+    if (saved) {
+        const idx = themes.findIndex(t => t.id === saved)
+        if (idx >= 0) currentTheme = idx
+    }
+    const link = document.getElementById('themeStylesheet')
+    link.setAttribute('href', themes[currentTheme].href)
 }
 
 const reloadApp = () => window.location.reload()
