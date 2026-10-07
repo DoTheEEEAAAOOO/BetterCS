@@ -1,0 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,227;1,227&display=swap');
+
+body {
+    font-family: "Raleway", sans-serif;
+    background-color: linear-gradient(to bottom, #8e99ff, #abb4ff);
+    margin: 0;
+    padding: 0;
+}
+
+* {
+    margin: 10px;
+}
+
+button, input, textarea, select, div, section, header {
+    padding: 20px;
+    background-color: linear-gradient(to bottom, #bfc6ff, #abb2f3);
+}
+
